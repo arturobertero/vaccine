@@ -1,0 +1,164 @@
+---
+title: "Loop EGA"
+output: html_document
+date: '2022-10-25'
+---
+
+# Libraries
+
+```{r}
+library("pacman")
+p_load(tidyverse, here, sjlabelled, stringr, glue, janitor, haven, stargazer, ltm)
+
+```
+
+# Input
+
+```{r}
+#Load database
+#response_original = read_dta(here("Input", "v1.0_ResPOnsE_COVID_19_W1-W4-2.dta"))  %>% 
+ #clean_names()
+
+#Transform in RDS
+#saveRDS(response_original, here("Input", "v1.0_ResPOnsE_COVID_19_W1-W4-2.rds"))
+
+#Import RDS
+response_original = read_rds(here("Input", "v1.0_ResPOnsE_COVID_19_W1-W4-2.rds"))  %>% 
+  clean_names()
+```
+
+# Processing
+
+## Base
+
+```{r}
+
+#Select and rename variables
+W3 = response_original %>% 
+    filter(info_wave==3) %>% 
+     dplyr::select(c(b2_06, b2_07, d1, e4_bis, d4_01, d4_02, d5, e2_01, e2_04, f10, h1_01,
+            j5_01, j5_02, v1, v2, v3, f9, k1, k2, k3_01, k3_02, k3_03, k3_04, k3_05,
+            g2, g6_01, g6_02, g6_05, c1, s1, s2, s9)) %>% 
+      mutate(across(b2_06:s9, ~replace(., .>97 , NA))) 
+
+
+
+colnames(W3) = c("comp_mask", "comp_hand", "judg_gov_covid", "judg_gov", "w2r_mov", 
+                 "w2r_asso", "he_eco", "tr_par", "tr_EU", "worry", "tr_science", 
+                 "vac_bad", "vac_sci", "vac_ob", "vac", "vac_int", "conspiracy", 
+                 "pol_int", "L-R", "PTV_DP", "PTV_FI", "PTV_L", "PTV_5SM", 
+                 "PTV_BOI", "health", "nerv", "depre", "diff", "eco_insec", 
+                 "sex", "age", "educ")
+
+#combine vac_int and vac in INT_VAC
+W3 = W3 %>%
+    mutate(int_vac = case_when(
+      (vac_int < 3  | vac == 1)~ 1,
+       (vac_int > 2 & vac == 2) ~ 0,)) %>% 
+      dplyr::select(-c(vac_int, vac)) 
+
+#invert polarity and binarize
+W3 = W3 %>% 
+  mutate((across(he_eco, ~ 11 - .)),
+          (across(vac_bad:vac_ob, ~ 6 - .)),
+            (across(pol_int, ~ 5 - .)),
+              worry = ifelse(worry<=2, 0, 1),
+                pol_int = ifelse(pol_int<=2, 0, 1),
+                  conspiracy = ifelse(conspiracy<3, 1, 0),
+                    eco_insec = ifelse(eco_insec<=2, 0, 1), 
+                      sex = ifelse(sex==2, 0, 1),
+                        educ = ifelse(educ<5, 0, 1),
+                          (across(health,  ~ 6 - .)))
+
+
+```
+
+## PCA
+
+```{r}
+#PCA
+#compliance
+compliance = data.frame(W3$comp_mask, W3$comp_hand)
+compliance = na.omit(compliance)
+pr_compliance <- princomp(na.omit(compliance), cor = TRUE)
+pr_compliance #unidimensional
+
+W3$comp = apply(W3[1:2], 1, mean, na.rm = TRUE)
+W3 = W3 %>% 
+  dplyr::select(-c(comp_hand, comp_mask))
+
+#Gov
+gov = data.frame(W3$judg_gov_covid, W3$judg_gov)
+gov = na.omit(gov)
+pr_gov <- princomp(na.omit(gov), cor = TRUE)
+pr_gov #unidimensional
+
+W3$gov = apply(W3[1:2], 1, mean, na.rm = TRUE)
+W3 = W3 %>% 
+  dplyr::select(-c(judg_gov_covid, judg_gov))
+
+#w2r
+w2r = data.frame(W3$w2r_mov, W3$w2r_asso)
+w2r = na.omit(w2r)
+pr_w2r <- princomp(na.omit(w2r), cor = TRUE)
+pr_w2r #unidimensional
+
+W3$w2r = apply(W3[1:2], 1, mean, na.rm = TRUE)
+W3 = W3 %>% 
+  dplyr::select(-c(w2r_mov, w2r_asso))
+
+#inst_tr
+inst_tr = data.frame(W3$tr_par, W3$tr_EU)
+inst_tr = na.omit(inst_tr)
+pr_inst_tr <- princomp(na.omit(inst_tr), cor = TRUE)
+pr_inst_tr #unidimensional
+
+W3$inst_tr = apply(W3[2:3], 1, mean, na.rm = TRUE)
+W3 = W3 %>% 
+  dplyr::select(-c(tr_par, tr_EU))
+
+#covid health difficulties
+c_h_d = data.frame(W3$nerv, W3$depre, W3$diff)
+c_h_d = na.omit(c_h_d)
+pr_c_h_d <- princomp(na.omit(c_h_d), cor = TRUE)
+pr_c_h_d #unidimensional
+
+W3$c_h_d = apply(W3[16:18], 1, mean, na.rm = TRUE)
+W3 = W3 %>% 
+  dplyr::select(-c(nerv, depre, diff))
+
+#alphas
+cronbach.alpha(compliance, CI=TRUE, standardized=TRUE)
+cronbach.alpha(gov, CI=TRUE, standardized=TRUE)
+cronbach.alpha(w2r, CI=TRUE, standardized=TRUE)
+cronbach.alpha(inst_tr, CI=TRUE, standardized=TRUE)
+cronbach.alpha(c_h_d, CI=TRUE, standardized=TRUE)
+```
+
+## Different datasets
+```{r}
+#distinct dataset for conspiracy (avoid case dispersions)
+W3_complete = W3 %>% 
+    na.omit()
+
+W3_nocons = W3 %>% 
+  dplyr::select(-conspiracy) %>% 
+    na.omit()
+```
+
+
+# Output
+
+## descriptives
+
+```{r}
+
+```
+
+## save
+
+```{r}
+saveRDS(W3_complete, here("Input", "W3_complete.rds"))
+saveRDS(W3_nocons, here("Input", "W3_nocons.rds"))
+```
+
