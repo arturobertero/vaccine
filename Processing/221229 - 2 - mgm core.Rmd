@@ -1,0 +1,251 @@
+---
+title: "20221209 - 2.mgm"
+output: html_document
+date: "2022-12-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(pacman)
+p_load(tidyverse, here, sjlabelled, stringr, glue, EGAnet, janitor, haven, 
+       ggpubr, gridExtra, dplyr, GGally, qgraph, sjmisc, igraph,
+       imager, grid, psych, stargazer, mgm, patchwork, ggplot2, 
+       NetworkComparisonTest, Matrix, bootnet, matrixcalc, openxlsx, devtools)
+
+
+```
+
+
+# Input
+
+```{r}
+W3 = readRDS((here("Input", "W3.rds")))
+W3= W3 %>% 
+  dplyr::select(-c(vac_ob, worry, inst_tr, comp, gov))
+```
+
+# Processing
+
+## Network objects
+
+```{r}
+## network objects
+type <-c("g","g","c","g","g","g","g","g","g","g","g","g","c","c","g","c",
+         "g","c","c")
+
+
+level <-c("1","1","2","1","1","1","1","1","1","1","1","1","2","2","1","2",
+         "1","2","2")
+
+shortnames <- c(
+"vac_bad",
+"risk",
+"conspiracy",
+"nat",
+"h_locus",
+"he_eco",
+"PTV_L",
+"PTV_5SM",
+"PTV_BOI",
+"tr_sci",
+"tr_h",
+"pray",
+"media",
+"sex",
+"age",
+"educ",
+"reg",
+"eco_insec",
+"hesitancy")
+
+longnames <- c(
+"Vaccine bad for health",
+"Risk perception",
+"Origin of virus",
+"Naturopaty",
+"Health locus of control",
+"Public health vs economy",
+"Propensity to vote for L",
+"Propensity to vote for 5SM",
+"Propensity to vote for BOI",
+"Trust in science",
+"trust in health syst",
+"religion, pray",
+"media",
+"Sex",
+"Age",
+"Education",
+"rural region",
+"Economic insecurity",
+"Vaccine hesitancy")
+```
+
+## Community stability function
+
+```{r}
+communityStability <- function(data, type, level, iterations)
+{
+  
+  communityMemberships <- list()
+  
+  for (i in 1:iterations)
+  {
+    fitGraph <- mgm(data, type, level, k = 2, verbatim = TRUE)
+    iGraph<- graph_from_adjacency_matrix(abs
+                                         (fitGraph$pairwise$wadj), "undirected", weighted =
+                                           TRUE)
+    communityMemberships[[i]] <- cluster_walktrap(iGraph)$membership
+  }
+  
+  communityOverlap <- matrix(NA, length(data), length(data))
+  
+  for(j in 1:length(data))
+  {
+    
+    overlapPerNode <- matrix(NA, iterations, ncol(communityOverlap))
+    
+    for(k in 1: iterations)
+    {
+      overlapPerNode[k,] <- as.numeric(communityMemberships[[k]][j] == communityMemberships[[k]])
+    }
+    
+    communityOverlap[j,] <- apply(overlapPerNode, 2, mean)
+  }
+  
+  diag(communityOverlap) <- 0
+  
+  return(list(communityMemberships = communityMemberships, communityOverlap = communityOverlap))
+  
+}
+```
+
+
+## Fit model
+```{r}
+set.seed(1)
+FitW3 <- mgm(W3, type, level, k = 2, binarySign = TRUE)
+```
+
+## Community stability
+
+```{r}
+CommunityStabTotal<-communityStability(W3, type, level, it=1000)
+```
+
+```{r}
+# Visualize community stability
+pdf(file = '../Output/core/community_stability.pdf',paper = "USr",
+    height = 9, width = 12)
+qgraph(CommunityStabTotal$communityOverlap, layout = "spring", 
+       theme = "Borkulo", labels = shortnames,
+       nodeNames = longnames,vsize=4.0,
+       edge.labels=FALSE, legend = TRUE, legend.cex = 0.3)
+dev.off()
+```
+
+```{r}
+# Vizualise detected communities
+inputCommDetection_total<-CommunityStabTotal$communityOverlap
+inputCommDetection_total[which(inputCommDetection_total <= .90)] <- 0
+
+pdf(file = '../Output/core/detected_communities.pdf',paper = "USr",
+    height = 9, width = 12)
+qgraph(inputCommDetection_total, layout = "spring", theme = "Borkulo",
+       labels = shortnames, nodeNames = longnames, vsize=4.0,
+       edge.labels=FALSE, legend = TRUE, legend.cex = 0.3)
+dev.off()
+```
+
+```{r}
+# group variables based on TH
+Totalgroup_comm <- list(
+ " "=c(1,4,5,10,19),
+ " "=c(3,6,11),
+ " "=c(7,9),
+ " "=c(2,8,12:18))
+
+# define nice colors
+Totalgroup_cols <- c("#4EB64A","#F4AD0A","#54C2F2", "#9370DB")
+```
+
+## Plot
+
+```{r}
+#enables theme colorblind because we don't need to specify edge.color
+inputGraphMGM <- FitW3$pairwise$wadj
+signsGraphMGM <- FitW3$pairwise$signs
+signsGraphMGM[which(is.na(signsGraphMGM))] <- 1
+inputGraphMGM <- inputGraphMGM*signsGraphMGM
+
+# refined, no minimum 
+set.seed(1)
+pdf(file = '../Output/core/MGM_nomin.pdf',paper = "USr", height = 9, width = 12)
+GraphMGM<-qgraph(inputGraphMGM, 
+  layout = "spring", theme = "Borkulo", 
+  labels = shortnames, nodeNames = longnames,
+  cut = 0.10, maximum = 1, 
+  details = FALSE, vsize=6.0,
+  groups=Totalgroup_comm, color= Totalgroup_cols,
+  legend = TRUE, legend.cex = 0.4)
+dev.off()
+
+# refined,  minimum = 0.5
+pdf(file = '../Output/core/MGM_min_05.pdf',paper = "USr", height = 9, width = 12)
+GraphMGM<-qgraph(inputGraphMGM, 
+  layout = "spring", theme = "Borkulo", 
+  labels = shortnames,nodeNames = longnames,
+  cut = 0.10, minimum = 0.05, maximum = 1, 
+  details = FALSE, vsize=6.0, 
+  groups=Totalgroup_comm, color= Totalgroup_cols,
+  legend = TRUE, legend.cex = 0.4)
+dev.off()
+
+# refined,  minimum = 0.10
+pdf(file = '../Output/core/MGM_min_10.pdf',paper = "USr", height = 9, width = 12)
+GraphMGM<-qgraph(inputGraphMGM, 
+  layout = "spring", theme = "Borkulo", 
+  labels = shortnames,nodeNames = longnames,
+  cut = 0.10, minimum = 0.10, maximum = 1, 
+  details = FALSE, vsize=6.0, legend = TRUE,
+  groups=Totalgroup_comm, color= Totalgroup_cols,
+  legend.cex = 0.4)
+dev.off()
+```
+
+## Centrality estimates
+
+```{r}
+#graph with complete labels for centrality plot
+GraphMGMCENT<-qgraph(inputGraphMGM, 
+  layout = "spring", theme = "colorblind",
+  labels = longnames, minimum = 0,
+  cut = 0.10, maximum = 1, details = TRUE,
+  legend = FALSE)
+
+#centrality Total
+centMGM <- centralityTable(GraphMGMCENT,standardized = FALSE)
+
+#CentralityPlot Total
+pdf('../Output/core/Centrality_Table.pdf')
+centralityPlot(GraphMGMCENT, include = c("Strength"), scale = "raw",
+               orderBy = "Strength")
+dev.off()
+
+```
+
+## ASPL
+
+```{r}
+#Shortest Path Lenght
+SPLMGM <- centrality(GraphMGM)$ShortestPathLengths
+SPLMGM <- SPLMGM[upper.tri(SPLMGM)]
+#Average shortest path length
+ASPL_MGM <- mean(SPLMGM)
+```
+ASPL = 13.25838
+
+# Robustness check
+
