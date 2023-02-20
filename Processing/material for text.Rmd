@@ -1,15 +1,22 @@
 ---
 title: "material for text vaccin hes cross"
 date: "2023-02-20"
-output: word_document
+output:
+  html_document:
+    df_print: paged
 ---
 
+# Libraries
+
+```{r}
+library(pacman)
+p_load(tidyverse, here, sjlabelled, stringr, glue, janitor, haven, stargazer, 
+       ltm, skimr, kableExtra)
+```
+
+
+
 # Basic tables
-
-## master
-
-
-
 
 ## PCA
 
@@ -19,6 +26,58 @@ table_comp <- "
 |:-------------:|:-------------:|:-------------:|:------------:|
 | Compliance    |        1.3    |     0.6       |     0.8      |
 | Government    |        1.4    |     0.4       |     0.9      |
+| Institutional trust|        1.3    |     0.6       |     0.8      |
 "
 cat(table_comp) # output the table in a format good for HTML/PDF/docx conversion
 ```
+
+## master
+
+| Question                                                                                                                                                                                                                                                                                                                                                                       | Name                       | Label      |
+|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------|------------|
+| Vaccines wear down the immune system and expose it to various diseases                                                                                                                                                                                                                                                                                                         | Vaccine bad for   health   | vac_bad    |
+| Do you personally feel that you are more or less exposed to contagion than the majority of the population in your area?                                                                                                                                                                                                                                                        | Risk Perception            | risk       |
+| What do you think is the most likely origin of the virus?                                                                                                                                                                                                                                                                                                                      | Origin of virus            | conspiracy |
+| More space should be given to natural healing methods                                                                                                                                                                                                                                                                                                                          | Naturopaty                 | nat        |
+| How much do you think Italians with their own behaviors are responsible for the pandemic's course?                                                                                                                                                                                                                                                                             | Health locus of control    | h_locus    |
+| Faced with the Coronavirus crisis, governments may react in different ways. A government may prioritize reducing Coronavirus infections,  even at the cost of causing a serious economic crisis for the country.  Or a government may prioritize defending the national economy,  even at the cost of increasing the number of infections. Where would you place your opinion? | Public health vs economy   | he_eco     |
+| Among the various parties we have in Italy, each would like to have your vote in the future.  Regardless of how you plan to vote in the next election, how likely are you to vote for the League in the future?                                                                                                                                                                | Propensity to vote for L   | PTV_L      |
+| Among the various parties we have in Italy, each would like to have your vote in the future. Regardless of how you plan to vote in the next election, how likely are you to vote for  the the Five Star Movement in the future?                                                                                                                                                | Propensity to vote for 5SM | PTV_5SM    |
+| Among the various parties we have in Italy, each would like to have your vote in the future.  Regardless of how you plan to vote in the next election, how likely are you to vote for Brothers of Italy in the future?                                                                                                                                                         | Propensity to vote for BOI | PTV_BOI    |
+| When it comes to vaccines, the recommendations of the scientific community can be trusted                                                                                                                                                                                                                                                                                      | Trust in science           | tr_sci     |
+| What do you think about the state of the health care system in your region today?                                                                                                                                                                                                                                                                                              | Trust in health syst       | tr_h       |
+| In the last week, how often did you pray?                                                                                                                                                                                                                                                                                                                                      | Religion, pray             | pray       |
+| Mainly, where do you get the most information about the Coronavirus crisis from?                                                                                                                                                                                                                                                                                               | Online Media               | media      |
+| Could you report your sex?                                                                                                                                                                                                                                                                                                                                                     | Sex                        | sex        |
+| Could you report your age?                                                                                                                                                                                                                         | Age                                 | Age       |
+| Could you report your educational level?                                                                                                                                                                                                           | Education                           | Educ      |
+| Could you indicate how many people reside in your township?                                                                                                                                                                                        | Rural region                        | Reg       |
+| Your household's income allows you yo live...                                                                                                                                                                                                      | Economic insecurity                 | Eco_insec |
+| Obtained combining: "Have you already received the COVID-19 vaccine?"; "What is your intention regarding the administration of the COVID-19 vaccine?                                                                                               | Vaccine hesitancy                   | Hesitancy |
+| Obtained combining: To what extent do the following sentences correspond to your behavior over the past seven days? "I stayed at least three feet away from other people"; "I wore a mask and/or gloves";  "I washed and sanitized my hands often" | Compliance to preventive  behaviors | Comp      |
+| "What is your assessment of the measures imposed by the government to stop the spread of COVID-19?"; "How do you assess the actions of the Draghi government during the COVID-19 emergency?"                                                       | Approval of  Governmental measures  | Gov       |
+| Obtained combining: What degree of trust do you give to the following institutions? "The Italian parliament"; "The European Union"                                                                                                                 | Institutional trust                 | Inst_tr   |
+
+
+
+## Freq distr
+
+```{r, results = "asis"}
+W3 = readRDS((here("Input", "W3.rds")))
+
+summary_vaccine  = as.data.frame(skim(W3))
+stargazer(as.data.frame(W3), digits = 1, type = "text", nobs = TRUE)
+
+
+stargazer(as.data.frame(W3), digits = 1, type = "html", nobs = TRUE)  %>% 
+  kable()
+
+```
+
+```{r include=TRUE, echo=TRUE}
+skim(W3) %>% 
+  as_tibble() %>%
+  kable()
+
+```
+

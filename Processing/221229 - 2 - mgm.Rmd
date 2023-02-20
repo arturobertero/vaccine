@@ -13,7 +13,7 @@ library(pacman)
 p_load(tidyverse, here, sjlabelled, stringr, glue, EGAnet, janitor, haven, 
        ggpubr, gridExtra, dplyr, GGally, qgraph, sjmisc, igraph,
        imager, grid, psych, stargazer, mgm, patchwork, ggplot2, 
-       NetworkComparisonTest, Matrix, bootnet, matrixcalc, openxlsx, devtools)
+       NetworkComparisonTest, Matrix, bootnet, matrixcalc, openxlsx, devtools, jtools)
 
 
 ```
@@ -280,7 +280,7 @@ saummary_edgeacc = summary(edgeacc, statistics = c("edge", "strength"),
 
 ```{r}
 # case dropping bootstrap
-centstab = bootnet(ITA, nBoots = 1000, 'mgm', type = "case", nCores = 8)
+centstab = bootnet(W3, nBoots = 1000, 'mgm', type = "case", nCores = 8)
 
 #load the object instead:
 #centstab = readRDS(here("Input", "centstab.rds"))
@@ -328,7 +328,7 @@ dev.off()
 
 ```{r}
 #small world network
-W3_small_core = smallworldness(mgmFit$pairwise$wadj, B = 1000)
+W3_small_core = smallworldness(FitW3$pairwise$wadj, B = 1000)
 W3_small_core
 
 ```
