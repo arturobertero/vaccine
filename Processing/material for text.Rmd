@@ -1,0 +1,24 @@
+---
+title: "material for text vaccin hes cross"
+date: "2023-02-20"
+output: word_document
+---
+
+# Basic tables
+
+## master
+
+
+
+
+## PCA
+
+```{r table2, echo=FALSE, message=FALSE, results='asis', warnings=FALSE}
+table_comp <- "
+|     Index     | 1° component  | 2° component  | Cronbach's α |
+|:-------------:|:-------------:|:-------------:|:------------:|
+| Compliance    |        1.3    |     0.6       |     0.8      |
+| Government    |        1.4    |     0.4       |     0.9      |
+"
+cat(table_comp) # output the table in a format good for HTML/PDF/docx conversion
+```
