@@ -30,10 +30,10 @@ response_original = read_rds(here("Input", "v1.0_ResPOnsE_COVID_19_W1-W4-2.rds")
 
 # Processing
 
-## Base
+## W3
 
 ```{r}
-
+# 10 November to 22 December 2021
 #Select and rename variables
 W3 = response_original %>% 
     filter(info_wave==3) %>% 
@@ -59,20 +59,18 @@ W3 = W3 %>%
 
 #invert polarity and recode
 W3 = W3 %>% 
-  mutate((across(vac_bad:vac_ob, ~ 6 - .)),
-            worry = ifelse(worry<=2, 0, 1),
-              (across(risk,  ~ 6 - .)),
+  mutate((across(vac_bad:vac_ob, ~ 6 - .)), #inverted polarity
+            worry = ifelse(worry<=2, 0, 1), 
+              (across(risk,  ~ 6 - .)), #inverted
                   conspiracy = ifelse(conspiracy<3, 1, 0),
-                     (across(he_eco,  ~ 11 - .)),
-                         (across(tr_sci,  ~ 6 - .)),
-                            (across(pray,  ~ 6 - .)),
-                              media = ifelse(media>=4 & media<=7, 1, 0),
+                     (across(he_eco,  ~ 11 - .)), #inverted
+                         (across(tr_sci,  ~ 6 - .)), #inverted
+                            (across(pray,  ~ 6 - .)), #inverted
+                              media = ifelse(media>=4 & media<=7, 1, 0), 
                                  sex = ifelse(sex==2, 0, 1),
                                    educ = ifelse(educ<5, 0, 1),
                                      reg = ifelse(reg<=3, 1, 0),
                                       eco_insec = ifelse(eco_insec<=2, 0, 1)) 
-
-
 ```
 
 ## PCA
@@ -100,7 +98,7 @@ W3 = W3 %>%
   dplyr::select(-c(judg_gov_covid, judg_gov))
 
 
-#inst_tr
+#inst_tr (excluded from core)
 inst_tr = data.frame(W3$tr_par, W3$tr_EU)
 inst_tr = na.omit(inst_tr)
 pr_inst_tr <- princomp(na.omit(inst_tr), cor = TRUE)
@@ -117,6 +115,12 @@ cronbach.alpha(inst_tr, CI=TRUE, standardized=TRUE)
 ```
 
 
+## W3 core
+```{r}
+W3_core = W3 %>% 
+  dplyr::select(-c(vac_ob, worry, inst_tr, comp, gov))
+```
+
 
 # Output
 
@@ -131,5 +135,6 @@ stargazer(as.data.frame(W3), type = "text", nobs = TRUE)
 
 ```{r}
 saveRDS(W3, here("Input", "W3.rds"))
+saveRDS(W3_core, here("Input", "W3_core.rds"))
 ```
 

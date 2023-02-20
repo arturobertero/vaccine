@@ -140,37 +140,6 @@ FitW3 <- mgm(W3, type, level, k = 2, binarySign = TRUE)
 ## Community stability
 
 ```{r}
-#CommunityStabTotal<-communityStability(W3, type, level, it=1000)
-
-#load the object instead:
-CommunityStabTotal = readRDS(here("Input", "CommunityStabTotal.rds"))
-```
-
-```{r}
-# Visualize community stability
-pdf(file = '../Output/complete/community_stability.pdf',paper = "USr",
-    height = 9, width = 12)
-qgraph(CommunityStabTotal$communityOverlap, layout = "spring", 
-       theme = "Borkulo", labels = shortnames,
-       nodeNames = longnames,vsize=4.0,
-       edge.labels=FALSE, legend = TRUE, legend.cex = 0.3)
-dev.off()
-```
-
-```{r}
-# Vizualise detected communities
-inputCommDetection_total<-CommunityStabTotal$communityOverlap
-inputCommDetection_total[which(inputCommDetection_total <= .90)] <- 0
-
-pdf(file = '../Output/complete/detected_communities.pdf',paper = "USr",
-    height = 9, width = 12)
-qgraph(inputCommDetection_total, layout = "spring", theme = "Borkulo",
-       labels = shortnames, nodeNames = longnames, vsize=4.0,
-       edge.labels=FALSE, legend = TRUE, legend.cex = 0.3)
-dev.off()
-```
-
-```{r}
 # group variables based on TH
 Totalgroup_comm <- list(
  " "=c(1,2),
