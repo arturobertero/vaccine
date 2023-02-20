@@ -1,7 +1,7 @@
 ---
-title: "230220 - 2.mgm"
+title: "20221209 - 2.mgm"
 output: html_document
-date: "2023-20-02"
+date: "2022-12-09"
 ---
 
 ```{r setup, include=FALSE}
@@ -10,15 +10,19 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(pacman)
-p_load(tidyverse, janitor, here, haven, labelled, sjmisc, skimr, ggplot2, jtools,
-       stargazer, IsingFit, qgraph, Matrix, igraph, NetworkComparisonTest, bootnet,
-       rio, IsingSampler, compute.es, foreign, mgm, matrixcalc, openxlsx, RColorBrewer)
+p_load(tidyverse, here, sjlabelled, stringr, glue, EGAnet, janitor, haven, 
+       ggpubr, gridExtra, dplyr, GGally, qgraph, sjmisc, igraph,
+       imager, grid, psych, stargazer, mgm, patchwork, ggplot2, 
+       NetworkComparisonTest, Matrix, bootnet, matrixcalc, openxlsx, devtools)
+
+
 ```
+
 
 # Input
 
 ```{r}
-W3 = readRDS((here("Input", "W3_core.rds")))
+W3 = readRDS((here("Input", "W3.rds")))
 ```
 
 # Processing
@@ -27,26 +31,65 @@ W3 = readRDS((here("Input", "W3_core.rds")))
 
 ```{r}
 ## network objects
-type <-c("g","g","c","g","g","g","g","g","g","g","g","g","c","c","g","c",
-         "g","c","c")
+type <-c("g","g","c","g","c","g","g","g","g","g","g","g","g","g","c","c","g","c",
+          "g","c","c","g","g","g")
 
-
-level <-c("1","1","2","1","1","1","1","1","1","1","1","1","2","2","1","2",
-         "1","2","2")
+level <-c("1","1","2","1","2","1","1","1","1","1","1","1","1","1","2","2","1","2",
+          "1","2","2","1","1","1")
 
 shortnames <- c(
-"vac_bad", "risk", "conspiracy", "nat", "h_locus", "he_eco", "PTV_L",
-"PTV_5SM", "PTV_BOI", "tr_sci", "tr_h", "pray", "media", "sex", "age",
-"educ", "reg", "eco_insec", "hesitancy")
+"vac_bad",
+"vac_ob",
+"worry",
+"risk",
+"conspiracy",
+"nat",
+"h_locus",
+"he_eco",
+"PTV_L",
+"PTV_5SM",
+"PTV_BOI",
+"tr_sci",
+"tr_h",
+"pray",
+"media",
+"sex",
+"age",
+"educ",
+"reg",
+"eco_insec",
+"hesitancy",
+"comp",
+"gov",
+"inst_tr")
 
 longnames <- c(
-"Vaccine bad for health", "Risk perception", "Origin of virus", "Naturopaty",
-"Health locus of control", "Public health vs economy", "Propensity to vote for L",
-"Propensity to vote for 5SM", "Propensity to vote for BOI", "Trust in science",
-"trust in health syst", "religion, pray", "media", "Sex", "Age", "Education",
-"rural region", "Economic insecurity", "Vaccine hesitancy")
+"Vaccine bad for health",
+"Vaccination obligation",
+"Worry about infection",
+"Risk perception",
+"Conspiracy about origins of virus",
+"Naturopaty",
+"Health locus of control",
+"Public health vs economy",
+"Propensity to vote for L",
+"Propensity to vote for 5SM",
+"Propensity to vote for BOI",
+"Trust in science",
+"Trust in health syst",
+"Religion, pray",
+"Media",
+"Sex",
+"Age",
+"Education",
+"Rural region",
+"Economic insecurity",
+"Vaccine hesitancy",
+"Compliance to preventive behaviors",
+"Approval of Government",
+"Institutional trust")
 
-# Community stability function
+# Community detection function
 communityStability <- function(data, type, level, iterations)
 {
   
@@ -82,8 +125,6 @@ communityStability <- function(data, type, level, iterations)
   
 }
 ```
-
-
 ## Fit model
 ```{r}
 set.seed(1)
@@ -97,12 +138,12 @@ FitW3 <- mgm(W3, type, level, k = 2, binarySign = TRUE)
 CommunityStabTotal<-communityStability(W3, type, level, it=1000)
 
 #load the object instead:
-CommunityStabTotal = readRDS(here("Input", "CommunityStabTotal.rds"))
+#CommunityStabTotal = readRDS(here("Input", "CommunityStabTotal.rds"))
 ```
 
 ```{r}
 # Visualize community stability
-pdf(file = '../Output/core/community_stability.pdf',paper = "USr",
+pdf(file = '../Output/community_stability.pdf',paper = "USr",
     height = 9, width = 12)
 qgraph(CommunityStabTotal$communityOverlap, layout = "spring", 
        theme = "Borkulo", labels = shortnames,
@@ -114,7 +155,7 @@ dev.off()
 inputCommDetection_total<-CommunityStabTotal$communityOverlap
 inputCommDetection_total[which(inputCommDetection_total <= .90)] <- 0
 
-pdf(file = '../Output/core/detected_communities.pdf',paper = "USr",
+pdf(file = '../Output/detected_communities.pdf',paper = "USr",
     height = 9, width = 12)
 qgraph(inputCommDetection_total, layout = "spring", theme = "Borkulo",
        labels = shortnames, nodeNames = longnames, vsize=4.0,
@@ -125,16 +166,13 @@ dev.off()
 ```{r}
 # group variables based on TH
 Totalgroup_comm <- list(
- " "=c(1,4,5,10,19),
- " "=c(3,6,11),
- " "=c(7,9),
- " "=c(2,8,12:18))
+ "Vaccine related"=c(1,2),
+ "Individual/group"=c(3:8,22),
+ "Context"=c(9:20,23,24),
+ "Hesitancy"=c(21))
 
 # define nice colors
-Totalgroup_cols <- c("#4EB64A","#F4AD0A","#54C2F2", "#9370DB")
-
-# TO DO: VISUALIZED ACCORDING TO COM DETECTION
-Totalgroup_cols2 <- c("#FBB4AE","#B3CDE3","#CCEBC5","#DECBE4","#FED9A6","#FFFFCC","#E5D8BD","#FDDAEC")
+Totalgroup_cols <- c("#66FF00","#1974D2","#08E8DE","#FFF000","#FFAA1D","#FF007F")
 ```
 
 ## Plot
@@ -148,7 +186,7 @@ inputGraphMGM <- inputGraphMGM*signsGraphMGM
 
 # refined, no minimum 
 set.seed(1)
-pdf(file = '../Output/core/MGM_nomin.pdf',paper = "USr", height = 9, width = 12)
+pdf(file = '../Output/MGM_nomin.pdf',paper = "USr", height = 9, width = 12)
 GraphMGM<-qgraph(inputGraphMGM, 
   layout = "spring", theme = "Borkulo", 
   labels = shortnames, nodeNames = longnames,
@@ -159,7 +197,7 @@ GraphMGM<-qgraph(inputGraphMGM,
 dev.off()
 
 # refined,  minimum = 0.5
-pdf(file = '../Output/core/MGM_min_05.pdf',paper = "USr", height = 9, width = 12)
+pdf(file = '../Output/MGM_min_05.pdf',paper = "USr", height = 9, width = 12)
 GraphMGM<-qgraph(inputGraphMGM, 
   layout = "spring", theme = "Borkulo", 
   labels = shortnames,nodeNames = longnames,
@@ -170,7 +208,7 @@ GraphMGM<-qgraph(inputGraphMGM,
 dev.off()
 
 # refined,  minimum = 0.10
-pdf(file = '../Output/core/MGM_min_10.pdf',paper = "USr", height = 9, width = 12)
+pdf(file = '../Output/MGM_min_10.pdf',paper = "USr", height = 9, width = 12)
 GraphMGM<-qgraph(inputGraphMGM, 
   layout = "spring", theme = "Borkulo", 
   labels = shortnames,nodeNames = longnames,
@@ -198,7 +236,7 @@ centMGM <- centralityTable(GraphMGMCENT,standardized = FALSE)
 centrality_table = centralityPlot(GraphMGMCENT, include = c("Strength"), scale = "raw",
                orderBy = "Strength") + theme_nice() + theme(axis.text.y=element_text(hjust=1))
 
-ggsave(here("Output", "core", "Centrality_Table.jpg"), centrality_table)
+ggsave(here("Output", "Centrality_Table.jpg"), centrality_table)
 ```
 
 ## ASPL
@@ -224,12 +262,12 @@ edgeacc =  bootnet(W3, nBoots = 1000, nCores = 8, 'mgm')
 #edgeacc = readRDS(here("Input", "edgeacc.rds"))
 
 #plot 1
-pdf('../Output/core/robustness/edge_accuracy.pdf', height = 70, width = 50)
+pdf('../Output/robustness/edge_accuracy.pdf', height = 70, width = 50)
 plot(edgeacc, labels = longnames, order = "sample")
 dev.off()
 
 #Plot 2
-pdf('../Output/core/robustness/edge_accuracy_CI.pdf', height = 70, width = 50)
+pdf('../Output/robustness/edge_accuracy_CI.pdf', height = 70, width = 50)
 plot(edgeacc, plot = "interval", split0 = TRUE, order="sample", labels=longnames)
 dev.off()
 
@@ -248,13 +286,13 @@ centstab = bootnet(ITA, nBoots = 1000, 'mgm', type = "case", nCores = 8)
 #centstab = readRDS(here("Input", "centstab.rds"))
 
 #plot 1
-pdf('../Output/core/robustness/Centrality_stability.pdf', height = 70, width = 50)
+pdf('../Output/robustness/Centrality_stability.pdf', height = 70, width = 50)
 plot(centstab, "Strength", perNode = TRUE, labels = longnames,
      subsetRange = c(100,50))
 dev.off()
 
 #Plot 2
-pdf('../Output/core/robustness/Centrality_stability_CI.pdf', height = 70, width = 50)
+pdf('../Output/robustness/Centrality_stability_CI.pdf', height = 70, width = 50)
 plot(centstab, "Strength", CIstyle =  "quantiles")
 dev.off()
 
@@ -269,7 +307,7 @@ corstab = corStability(centstab)
 differenceTest(edgeacc, 2--3, 3--4, "strength")
 
 # Plot test results for every edge weight in the network
-pdf('../Output/core/robustness/test_edges.pdf', height = 70, width = 50)
+pdf('../Output/robustness/test_edges.pdf', height = 70, width = 50)
 plot(edgeacc, "edge", plot = "difference", onlyNonZero = TRUE, order = "sample", 
      labels = T)
 dev.off()
@@ -280,7 +318,7 @@ dev.off()
 differenceTest(edgeacc, 2, 3, "strength")
 
 # Plot test results for every edge weight in the network
-pdf('../Output/core/robustness/test_strenghts.pdf', height = 70, width = 50)
+pdf('../Output/robustness/test_strenghts.pdf', height = 70, width = 50)
 plot(edgeacc, "strength", order = "mean", labels = T)
 dev.off()
 ```
@@ -318,7 +356,7 @@ saveRDS(centstab, here("Input", "centstab.rds"))
 EdgeWeight_Total_half<-upper.triangle(inputGraphMGM)
 EdgeWeight_Total_half[EdgeWeight_Total_half == 0] <- NA
 EdgeWeightsExcel_half<- list("mgm" = EdgeWeight_Total_half)
-write.xlsx(EdgeWeightsExcel_half, "../Output/core/EdgeWeightsExcel_half.xlsx",
+write.xlsx(EdgeWeightsExcel_half, "../Output/EdgeWeightsExcel_half.xlsx",
            colWidths = "auto", rowNames = TRUE)
 ```
 

@@ -37,7 +37,7 @@ response_original = read_rds(here("Input", "v1.0_ResPOnsE_COVID_19_W1-W4-2.rds")
 #Select and rename variables
 W3 = response_original %>% 
     filter(info_wave==3) %>% 
-     dplyr::select(c(v2,v3,j5_01,v1,f10,f3,f9,h1_04,j4bis_b,b2_06,b2_07,d5,d1,
+     dplyr::select(c(v2,v3,j5_01,v1,f10,f3,f9,h1_04,j4bis_b,b2_03,b2_06,b2_07,d5,d1,
                      e4_bis,k3_03,k3_04,k3_05,e2_01,e2_04,j5_02,e3,g7,c5,s1,s2,
                      s9,s8,c1)) %>% 
         mutate(across(v2:c1, ~replace(., .>97 , NA))) %>% 
@@ -46,9 +46,10 @@ W3 = response_original %>%
 
 
 colnames(W3) = c("vac","vac_int","vac_bad","vac_ob","worry","risk","conspiracy",
-                 "nat","h_locus","comp_mask","comp_hand","he_eco","judg_gov_covid",
-                 "judg_gov","PTV_L","PTV_5SM","PTV_BOI","tr_par","tr_EU","tr_sci",
-                 "tr_h","pray","media","sex","age","educ","reg","eco_insec")
+                 "nat","h_locus","comp_dist", "comp_mask","comp_hand","he_eco",
+                 "judg_gov_covid","judg_gov","PTV_L","PTV_5SM","PTV_BOI","tr_par",
+                 "tr_EU","tr_sci","tr_h","pray","media","sex","age","educ",
+                 "reg","eco_insec")
 
 #combine vac_int and vac in INT_VAC
 W3 = W3 %>%
@@ -78,14 +79,14 @@ W3 = W3 %>%
 ```{r}
 #PCA
 #compliance
-compliance = data.frame(W3$comp_mask, W3$comp_hand)
+compliance = data.frame(W3$comp_mask, W3$comp_hand, W3$comp_dist)
 compliance = na.omit(compliance)
 pr_compliance <- princomp(na.omit(compliance), cor = TRUE)
 pr_compliance #unidimensional
 
-W3$comp = apply(W3[1:2], 1, mean, na.rm = TRUE)
+W3$comp = apply(W3[8:10], 1, mean, na.rm = TRUE)
 W3 = W3 %>% 
-  dplyr::select(-c(comp_hand, comp_mask))
+  dplyr::select(-c(comp_hand, comp_mask, comp_dist))
 
 #Gov
 gov = data.frame(W3$judg_gov_covid, W3$judg_gov)
@@ -93,7 +94,7 @@ gov = na.omit(gov)
 pr_gov <- princomp(na.omit(gov), cor = TRUE)
 pr_gov #unidimensional
 
-W3$gov = apply(W3[1:2], 1, mean, na.rm = TRUE)
+W3$gov = apply(W3[9:10], 1, mean, na.rm = TRUE)
 W3 = W3 %>% 
   dplyr::select(-c(judg_gov_covid, judg_gov))
 
@@ -104,7 +105,7 @@ inst_tr = na.omit(inst_tr)
 pr_inst_tr <- princomp(na.omit(inst_tr), cor = TRUE)
 pr_inst_tr #unidimensional
 
-W3$inst_tr = apply(W3[2:3], 1, mean, na.rm = TRUE)
+W3$inst_tr = apply(W3[12:13], 1, mean, na.rm = TRUE)
 W3 = W3 %>% 
   dplyr::select(-c(tr_par, tr_EU))
 
@@ -112,13 +113,6 @@ W3 = W3 %>%
 cronbach.alpha(compliance, CI=TRUE, standardized=TRUE)
 cronbach.alpha(gov, CI=TRUE, standardized=TRUE)
 cronbach.alpha(inst_tr, CI=TRUE, standardized=TRUE)
-```
-
-
-## W3 core
-```{r}
-W3_core = W3 %>% 
-  dplyr::select(-c(vac_ob, worry, inst_tr, comp, gov))
 ```
 
 
@@ -135,6 +129,5 @@ stargazer(as.data.frame(W3), type = "text", nobs = TRUE)
 
 ```{r}
 saveRDS(W3, here("Input", "W3.rds"))
-saveRDS(W3_core, here("Input", "W3_core.rds"))
 ```
 
