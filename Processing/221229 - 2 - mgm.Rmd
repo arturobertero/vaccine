@@ -68,9 +68,9 @@ longnames <- c(
 "Vaccination obligation",
 "Worry about infection",
 "Risk perception",
-"Conspiracy about origins of virus",
-"Naturopaty",
-"Health locus of control",
+"Endorsing conspiracy theories",
+"Trust in alternative medicine",
+"Internal health locus of control",
 "Public health vs economy",
 "Propensity to vote for L",
 "Propensity to vote for 5SM",
@@ -78,7 +78,7 @@ longnames <- c(
 "Trust in science",
 "Trust in health syst",
 "Religion, pray",
-"Media",
+"Digital media diet",
 "Sex",
 "Age",
 "Education",
@@ -88,6 +88,32 @@ longnames <- c(
 "Compliance to preventive behaviors",
 "Approval of Government",
 "Institutional trust")
+
+shapes <- c(
+"circle", 
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"square",
+"circle",
+"circle",
+"circle")
 
 # Community detection function
 communityStability <- function(data, type, level, iterations)
@@ -135,10 +161,10 @@ FitW3 <- mgm(W3, type, level, k = 2, binarySign = TRUE)
 
 ```{r}
 #function LOAD THE OBJECT down below TO SAVE TIME:
-CommunityStabTotal<-communityStability(W3, type, level, it=1000)
+#CommunityStabTotal<-communityStability(W3, type, level, it=1000)
 
 #load the object instead:
-#CommunityStabTotal = readRDS(here("Input", "CommunityStabTotal.rds"))
+CommunityStabTotal = readRDS(here("Input", "CommunityStabTotal.rds"))
 ```
 
 ```{r}
@@ -164,15 +190,21 @@ dev.off()
 ```
 
 ```{r}
-# group variables based on TH
+# group variables based on TH CHECK AGAIN BASED ON THE TABLE
+#Totalgroup_comm <- list(
+# "Vaccine related"=c(1,2),
+# "Individual/group"=c(3:8,22),
+# "Context"=c(9:20,23,24),
+# "Hesitancy"=c(21))
+
 Totalgroup_comm <- list(
- "Vaccine related"=c(1,2),
- "Individual/group"=c(3:8,22),
- "Context"=c(9:20,23,24),
- "Hesitancy"=c(21))
+ " "=c(1,2,12,21),
+ " "=c(3,4,7,14:20,22),
+ " "=c(5,6,8,10,13,23,24),
+ " "=c(9,11))
 
 # define nice colors
-Totalgroup_cols <- c("#66FF00","#1974D2","#08E8DE","#FFF000","#FFAA1D","#FF007F")
+Totalgroup_cols <- c("#74A4BC","#9FD6C3","#F1E898","#FF725E")
 ```
 
 ## Plot
@@ -191,7 +223,7 @@ GraphMGM<-qgraph(inputGraphMGM,
   layout = "spring", theme = "Borkulo", 
   labels = shortnames, nodeNames = longnames,
   cut = 0.10, maximum = 1, 
-  details = FALSE, vsize=6.0,
+  details = FALSE, vsize=6.0, shape = shapes,
   groups=Totalgroup_comm, color= Totalgroup_cols,
   legend = TRUE, legend.cex = 0.4, borders = FALSE)
 dev.off()
@@ -202,7 +234,7 @@ GraphMGM<-qgraph(inputGraphMGM,
   layout = "spring", theme = "Borkulo", 
   labels = shortnames,nodeNames = longnames,
   cut = 0.10, minimum = 0.05, maximum = 1, 
-  details = FALSE, vsize=6.0, 
+  details = FALSE, vsize=6.0, shape = shapes,
   groups=Totalgroup_comm, color= Totalgroup_cols,
   legend = TRUE, legend.cex = 0.3, borders = FALSE)
 dev.off()
@@ -212,10 +244,10 @@ pdf(file = '../Output/MGM_min_10.pdf',paper = "USr", height = 9, width = 12)
 GraphMGM<-qgraph(inputGraphMGM, 
   layout = "spring", theme = "Borkulo", 
   labels = shortnames,nodeNames = longnames,
-  cut = 0.10, minimum = 0.10, maximum = 1, 
-  details = FALSE, vsize=6.0, legend = TRUE,
+  cut = 0.10, minimum = 0.15, maximum = 1, 
+  details = FALSE, vsize=6.0, shape = shapes,
   groups=Totalgroup_comm, color= Totalgroup_cols,
-  legend.cex = 0.4, borders = FALSE)
+  legend = TRUE, legend.cex = 0.3, borders = FALSE)
 dev.off()
 ```
 
@@ -256,10 +288,10 @@ ASPL = 13.25838
 
 ```{r}
 #edge weight accuracy: non parametric bootstrap with 8 cores
-edgeacc =  bootnet(W3, nBoots = 1000, nCores = 8, 'mgm')
+#edgeacc =  bootnet(W3, nBoots = 1000, nCores = 8, 'mgm')
 
 #load the object instead:
-#edgeacc = readRDS(here("Input", "edgeacc.rds"))
+edgeacc = readRDS(here("Input", "edgeacc.rds"))
 
 #plot 1
 pdf('../Output/robustness/edge_accuracy.pdf', height = 70, width = 50)
@@ -280,10 +312,10 @@ saummary_edgeacc = summary(edgeacc, statistics = c("edge", "strength"),
 
 ```{r}
 # case dropping bootstrap
-centstab = bootnet(W3, nBoots = 1000, 'mgm', type = "case", nCores = 8)
+#centstab = bootnet(W3, nBoots = 1000, 'mgm', type = "case", nCores = 8)
 
 #load the object instead:
-#centstab = readRDS(here("Input", "centstab.rds"))
+centstab = readRDS(here("Input", "centstab.rds"))
 
 #plot 1
 pdf('../Output/robustness/Centrality_stability.pdf', height = 70, width = 50)

@@ -2,6 +2,7 @@
 title: "material for text vaccin hes cross"
 date: "2023-02-20"
 output:
+  word_document: default
   html_document:
     df_print: paged
 ---
@@ -20,7 +21,7 @@ p_load(tidyverse, here, sjlabelled, stringr, glue, janitor, haven, stargazer,
 
 ## PCA
 
-```{r table2, echo=FALSE, message=FALSE, results='asis', warnings=FALSE}
+```{r table1, echo=FALSE, message=FALSE, results='asis', warnings=FALSE}
 table_comp <- "
 |     Index     | 1° component  | 2° component  | Cronbach's α |
 |:-------------:|:-------------:|:-------------:|:------------:|
@@ -62,22 +63,56 @@ cat(table_comp) # output the table in a format good for HTML/PDF/docx conversion
 
 ## Freq distr
 
-```{r, results = "asis"}
+```{r eval=FALSE, include=FALSE}
 W3 = readRDS((here("Input", "W3.rds")))
 
-summary_vaccine  = as.data.frame(skim(W3))
-stargazer(as.data.frame(W3), digits = 1, type = "text", nobs = TRUE)
+frq_distr_tab = stargazer(as.data.frame(W3), type = "text", nobs = TRUE, digits = 1)
+capture.output(frq_distr_tab, file = here("Output", "descriptives", "frq_distr_tab.txt"))
 
+frq_distr_tab = stargazer(as.data.frame(W3), type = "html", nobs = TRUE, digits = 1)
+capture.output(frq_distr_tab, file = here("Output", "descriptives", "frq_distr_tab.html"))
 
-stargazer(as.data.frame(W3), digits = 1, type = "html", nobs = TRUE)  %>% 
-  kable()
-
-```
-
-```{r include=TRUE, echo=TRUE}
-skim(W3) %>% 
-  as_tibble() %>%
-  kable()
+frq_distr_tab = stargazer(as.data.frame(W3), type = "latex", nobs = TRUE, digits = 1)
+capture.output(frq_distr_tab, file = here("Output", "descriptives", "frq_distr_tab_latex.txt"))
 
 ```
 
+## Predictors (theory)
+
+| Contextual   determinants        | Group/individual determinants                       | Vaccine   related determinants       |   |   |   |
+|----------------------------------|-----------------------------------------------------|--------------------------------------|---|---|---|
+| Political inclination: far right | Worry about COVID-19                                | Belief that vaccines are unsafe      |   |   |   |
+| Political inclination: populist  | Risk perception                                     | Desire to make vaccination mandatory |   |   |   |
+| Distrust in institutions         | Endorsing conspiracy theories                       |                                      |   |   |   |
+| Distrust in government           | Trust in alternative medicine                       |                                      |   |   |   |
+| Religiosity                      | Internal health locus of control                    |                                      |   |   |   |
+| Digital media diet               | Low compliance with COVID-19   preventive behaviors |                                      |   |   |   |
+| Females                          | Trust in health system                              |                                      |   |   |   |
+| Lower age                        | Distrust in science                                 |                                      |   |   |   |
+| Lower education                  | Lesser sense of collective   responsibility         |                                      |   |   |   |
+| Lower income                     |                                                     |                                      |   |   |   |
+| Rural region                     |                                                     |                                      |   |   |   |
+
+
+## Predictors with references (theory)
+
+go on datawrapper, you have the excel base file in Input folder
+
+## Empirical predictors
+
+```{r table2, echo=FALSE, message=FALSE, results='asis', warnings=FALSE}
+table_pred <- "
+|   Predictor  |  Coefficient  |
+|:-------------:|:-------------:|
+| Vaccine obbligation    |    -0,94 |
+| Vaccine bad for health    | 0,36    | 
+| Compliance to preventive behaviors |  0,35 |
+| Trust in science | -0,23 |
+| Endorsing conspiracy theories | 0,13 |
+| Trust in health system | 0,13 |
+| Approval of Government | -0,09 |
+| Institutional trust | -0,09 |
+| Trust in alternative medicine    |    0,06 |
+"
+cat(table_pred) # output the table in a format good for HTML/PDF/docx conversion
+```
