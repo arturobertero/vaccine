@@ -1,0 +1,208 @@
+---
+title: "database vaccine cross"
+output: html_document
+date: '2022-10-25'
+---
+
+# Libraries
+
+```{r}
+library("pacman")
+p_load(tidyverse, here, sjlabelled, stringr, glue, janitor, haven, stargazer, 
+       ltm, skimr)
+
+#remove scientific notation
+options(scipen=999)
+```
+
+# Input
+
+```{r}
+#Load database
+#response_original = read_dta(here("Input", "v1.0_ResPOnsE_COVID_19_W1-W4-2.dta"))  %>% 
+ #clean_names()
+
+#Transform in RDS
+#saveRDS(response_original, here("Input", "v1.0_ResPOnsE_COVID_19_W1-W4-2.rds"))
+
+#Import RDS
+response_original = read_rds(here("Input", "v1.0_ResPOnsE_COVID_19_W1-W4-2.rds"))  %>% 
+  clean_names()
+```
+
+# Processing
+
+## W3
+
+```{r}
+# 10 November to 22 December 2021
+#Select and rename variables
+W3 = response_original %>% 
+    filter(info_wave==3) %>% 
+     dplyr::select(c(v2,v3,j5_01,v1,f10,f3,f9,h1_04,j4bis_b,b2_03,b2_06,b2_07,d5,d1,
+                     e4_bis,k3_03,k3_04,k3_05,e2_01,e2_04,j5_02,e3,g7,c5,s1,s2,
+                     s9,s8,c1)) %>% 
+        mutate(across(v2:c1, ~replace(., .>97 , NA))) %>% 
+          na.omit()
+
+#colnames
+colnames(W3) = c("vac","vac_int","vac_bad","vac_ob","worry","risk","conspiracy",
+                 "nat","h_locus","comp_dist", "comp_mask","comp_hand","he_eco",
+                 "judg_gov_covid","judg_gov","PTV_L","PTV_5SM","PTV_BOI","tr_par",
+                 "tr_EU","tr_sci","tr_h","pray","media","sex","age","educ",
+                 "reg","eco_insec")
+
+# W3 full to do ttest (next section)
+W3_full = W3 %>%
+    mutate(hesitancy = case_when(
+      (vac_int < 3  | vac == 1)~ 0,
+       (vac_int > 2 & vac == 2)~ 1,))
+
+#combine vac_int and vac in INT_VAC
+W3 = W3 %>%
+    mutate(hesitancy = case_when(
+      (vac_int < 3  | vac == 1)~ 0,
+       (vac_int > 2 & vac == 2)~ 1,)) %>% 
+          dplyr::select(-c(vac_int, vac)) 
+
+#invert polarity and recode
+W3 = W3 %>% 
+  mutate((across(vac_bad,  ~ 6 - .)), 
+  worry = ifelse(worry<=2, 1, 0), 
+  conspiracy = ifelse(conspiracy<3, 1, 0),
+  (across(tr_h,  ~ 10 - .)),
+  pray = ifelse(pray<=4, 0, 1),
+  media = ifelse(media>=4 & media<=7, 1, 0), 
+  sex = ifelse(sex==2, 1, 0),
+  educ = ifelse(educ<=5, 1, 0),
+  (across(age,  ~ 89 - .)),
+  reg = ifelse(reg<=3, 1, 0),
+  (across(comp_dist:comp_hand,  ~ 10 - .)),
+  (across(judg_gov_covid:judg_gov,  ~ 10 - .)),
+  (across(tr_par:tr_EU,  ~ 10- .))) 
+```
+
+##  W3_full_nolist
+
+```{r}
+#Select and rename variables (no "na.omit")
+W3_full_nolist = response_original %>% 
+    filter(info_wave==3) %>% 
+     dplyr::select(c(v2,v3,j5_01,v1,f10,f3,f9,h1_04,j4bis_b,b2_03,b2_06,b2_07,d5,d1,
+                     e4_bis,k3_03,k3_04,k3_05,e2_01,e2_04,j5_02,e3,g7,c5,s1,s2,
+                     s9,s8,c1)) %>% 
+        mutate(across(v2:c1, ~replace(., .>97 , NA))) 
+
+#colnames
+colnames(W3_full_nolist) = c("vac","vac_int","vac_bad","vac_ob","worry","risk","conspiracy",
+                 "nat","h_locus","comp_dist", "comp_mask","comp_hand","he_eco",
+                 "judg_gov_covid","judg_gov","PTV_L","PTV_5SM","PTV_BOI","tr_par",
+                 "tr_EU","tr_sci","tr_h","pray","media","sex","age","educ",
+                 "reg","eco_insec")
+
+# W3_full_nolist full to do ttest (next section)
+W3_full_nolist = W3_full_nolist %>%
+    mutate(hesitancy = case_when(
+      (vac_int < 3  | vac == 1)~ 0,
+       (vac_int > 2 & vac == 2)~ 1,))
+
+#invert polarity and recode
+W3_full_nolist = W3_full_nolist %>% 
+  mutate((across(vac_bad,  ~ 6 - .)), 
+  worry = ifelse(worry<=2, 1, 0), 
+  conspiracy = ifelse(conspiracy<3, 1, 0),
+  (across(tr_h,  ~ 10 - .)),
+  pray = ifelse(pray<=4, 0, 1),
+  media = ifelse(media>=4 & media<=7, 1, 0), 
+  sex = ifelse(sex==2, 1, 0),
+  educ = ifelse(educ<=5, 1, 0),
+  (across(age,  ~ 89 - .)),
+  reg = ifelse(reg<=3, 1, 0),
+  (across(comp_dist:comp_hand,  ~ 10 - .)),
+  (across(judg_gov_covid:judg_gov,  ~ 10 - .)),
+  (across(tr_par:tr_EU,  ~ 10- .))) 
+
+# I had 9325 before listwise, 1535 after. It means I m working with 16,46% of 
+# the sample. Hence, I ll do t test full sample vs restricted one.
+```
+
+## T-test(s)
+
+```{r}
+#loop each V and run t.test
+tests_list <- lapply(seq_along(W3_full), function(i){
+  t.test(W3_full[[i]], W3_full_nolist[[i]])
+})
+
+means = sapply(tests_list, '[[', 'statistic')
+pvalues = as.data.frame(sapply(tests_list, '[[', 'p.value')) 
+cis = sapply(tests_list, '[[', 'conf.int')
+
+#print true when the means differ
+pvalues[,2] = names(W3_full)
+pvalues[,3] = with(pvalues,pvalues<0.05)
+```
+
+
+## PCA
+
+```{r}
+#PCA
+#compliance
+compliance = data.frame(W3$comp_mask, W3$comp_hand, W3$comp_dist)
+compliance = na.omit(compliance)
+pr_compliance <- princomp(na.omit(compliance), cor = TRUE)
+pr_compliance #unidimensional
+
+W3$low_comp = apply(W3[8:10], 1, mean, na.rm = TRUE)
+W3 = W3 %>% 
+  dplyr::select(-c(comp_hand, comp_mask, comp_dist))
+
+#Gov
+gov = data.frame(W3$judg_gov_covid, W3$judg_gov)
+gov = na.omit(gov)
+pr_gov <- princomp(na.omit(gov), cor = TRUE)
+pr_gov #unidimensional
+
+W3$distrust_gov = apply(W3[9:10], 1, mean, na.rm = TRUE)
+W3 = W3 %>% 
+  dplyr::select(-c(judg_gov_covid, judg_gov))
+
+
+#inst_tr (excluded from core)
+inst_tr = data.frame(W3$tr_par, W3$tr_EU)
+inst_tr = na.omit(inst_tr)
+pr_inst_tr <- princomp(na.omit(inst_tr), cor = TRUE)
+pr_inst_tr #unidimensional
+
+W3$distrust_inst = apply(W3[12:13], 1, mean, na.rm = TRUE)
+W3 = W3 %>% 
+  dplyr::select(-c(tr_par, tr_EU))
+
+#alphas
+cronbach.alpha(compliance, CI=TRUE, standardized=TRUE)
+cronbach.alpha(gov, CI=TRUE, standardized=TRUE)
+cronbach.alpha(inst_tr, CI=TRUE, standardized=TRUE)
+
+```
+
+
+# Output
+
+## descriptives
+
+```{r}
+summary_vaccine  = as.data.frame(skim(W3))
+stargazer(as.data.frame(W3), type = "text", nobs = TRUE)
+```
+
+## save
+
+```{r}
+#still need to delete everything about tr_h, notice indexes will be fucked 
+W3 = W3 %>% 
+  dplyr::select(-tr_h)
+
+saveRDS(W3, here("Input", "W3.rds"))
+```
+
