@@ -197,17 +197,15 @@ dev.off()
 Totalgroup_comm <- list(
  " "=c(1,2,12,20),
  " "=c(3,4),
+ " "=c(5,8),
+ " "=c(6,7,21),
  " "=c(9,11),
- " "=c(6),
- " "=c(7,21),
- " "=c(8),
- " "=c(5),
  " "=c(10,22,23),
  " "=c(13:19))
 
 # define nice colors
-Totalgroup_cols <- c("#BDE6F1","#E96479","#F5E9CF","#B4CFB0","#C37B89",
-                              "#DF7861","#C3ACD0","#FFD56F", "#3FA796")
+Totalgroup_cols <- c("#BDE6F1","#E96479","#3FA796","#B4CFB0",
+                              "#DF7861","#C3ACD0","#FFD56F")
 ```
 
 ## Plot
@@ -231,17 +229,28 @@ GraphMGM<-qgraph(inputGraphMGM,
   legend = TRUE, legend.cex = 0.4, borders = FALSE)
 dev.off()
 
-# refined,  minimum = 0.5
-set.seed(123)
-pdf(file = '../Output/MGM_min_05.pdf',paper = "USr", height = 9, width = 12)
+# refined,  minimum = 0.7
+set.seed(100)
+pdf(file = '../Output/MGM_min_07.pdf',paper = "USr", height = 9, width = 12)
 GraphMGM<-qgraph(inputGraphMGM, 
   layout = "spring", theme = "Borkulo", 
   labels = shortnames,nodeNames = longnames,
-  cut = 0.10, minimum = 0.05, maximum = 1, 
+  cut = 0.10, minimum = 0.07, maximum = 1, 
   details = FALSE, vsize=6.0, shape = shapes,
   groups=Totalgroup_comm, color= Totalgroup_cols,
-  legend = TRUE, legend.cex = 0.3, borders = FALSE)
+  legend = TRUE, legend.cex = 0.35, borders = FALSE)
 dev.off()
+
+# same but in jpg
+set.seed(100)
+GraphMGM<-qgraph(inputGraphMGM, 
+  layout = "spring", theme = "Borkulo", 
+  labels = shortnames,nodeNames = longnames,
+  cut = 0.10, minimum = 0.07, maximum = 1, 
+  details = FALSE, vsize=6.0, shape = shapes,
+  groups=Totalgroup_comm, color= Totalgroup_cols,
+  legend = TRUE, legend.cex = 0.35, borders = FALSE, 
+  filetype="jpg", filename=here("Output", "MGM_min_07.jpg"))
 
 # refined,  minimum = 0.10
 pdf(file = '../Output/MGM_min_10.pdf',paper = "USr", height = 9, width = 12)
@@ -284,7 +293,7 @@ SPLMGM <- SPLMGM[upper.tri(SPLMGM)]
 #Average shortest path length
 ASPL_MGM <- mean(SPLMGM)
 ```
-ASPL = 13.25838
+ASPL = 14.0747
 
 ## Bootstrap
 

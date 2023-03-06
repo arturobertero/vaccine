@@ -7,6 +7,7 @@ date: '2022-10-25'
 # Libraries
 
 ```{r}
+#packages
 library("pacman")
 p_load(tidyverse, here, sjlabelled, stringr, glue, janitor, haven, stargazer, 
        ltm, skimr)
@@ -19,13 +20,6 @@ options(scipen=999)
 
 ```{r}
 #Load database
-#response_original = read_dta(here("Input", "v1.0_ResPOnsE_COVID_19_W1-W4-2.dta"))  %>% 
- #clean_names()
-
-#Transform in RDS
-#saveRDS(response_original, here("Input", "v1.0_ResPOnsE_COVID_19_W1-W4-2.rds"))
-
-#Import RDS
 response_original = read_rds(here("Input", "v1.0_ResPOnsE_COVID_19_W1-W4-2.rds"))  %>% 
   clean_names()
 ```
@@ -40,7 +34,7 @@ response_original = read_rds(here("Input", "v1.0_ResPOnsE_COVID_19_W1-W4-2.rds")
 W3 = response_original %>% 
     filter(info_wave==3) %>% 
      dplyr::select(c(v2,v3,j5_01,v1,f10,f3,f9,h1_04,j4bis_b,b2_03,b2_06,b2_07,d5,d1,
-                     e4_bis,k3_03,k3_04,k3_05,e2_01,e2_04,j5_02,e3,g7,c5,s1,s2,
+                     e4_bis,k3_03,k3_04,k3_05,e2_01,e2_04,j5_02,g7,c5,s1,s2,
                      s9,s8,c1)) %>% 
         mutate(across(v2:c1, ~replace(., .>97 , NA))) %>% 
           na.omit()
@@ -49,10 +43,10 @@ W3 = response_original %>%
 colnames(W3) = c("vac","vac_int","vac_bad","vac_ob","worry","risk","conspiracy",
                  "nat","h_locus","comp_dist", "comp_mask","comp_hand","he_eco",
                  "judg_gov_covid","judg_gov","PTV_L","PTV_5SM","PTV_BOI","tr_par",
-                 "tr_EU","tr_sci","tr_h","pray","media","sex","age","educ",
+                 "tr_EU","tr_sci","pray","media","sex","age","educ",
                  "reg","eco_insec")
 
-# W3 full to do ttest (next section)
+# W3 full to do ttest (next chunk)
 W3_full = W3 %>%
     mutate(hesitancy = case_when(
       (vac_int < 3  | vac == 1)~ 0,
@@ -70,7 +64,6 @@ W3 = W3 %>%
   mutate((across(vac_bad,  ~ 6 - .)), 
   worry = ifelse(worry<=2, 1, 0), 
   conspiracy = ifelse(conspiracy<3, 1, 0),
-  (across(tr_h,  ~ 10 - .)),
   pray = ifelse(pray<=4, 0, 1),
   media = ifelse(media>=4 & media<=7, 1, 0), 
   sex = ifelse(sex==2, 1, 0),
@@ -89,7 +82,7 @@ W3 = W3 %>%
 W3_full_nolist = response_original %>% 
     filter(info_wave==3) %>% 
      dplyr::select(c(v2,v3,j5_01,v1,f10,f3,f9,h1_04,j4bis_b,b2_03,b2_06,b2_07,d5,d1,
-                     e4_bis,k3_03,k3_04,k3_05,e2_01,e2_04,j5_02,e3,g7,c5,s1,s2,
+                     e4_bis,k3_03,k3_04,k3_05,e2_01,e2_04,j5_02,g7,c5,s1,s2,
                      s9,s8,c1)) %>% 
         mutate(across(v2:c1, ~replace(., .>97 , NA))) 
 
@@ -97,7 +90,7 @@ W3_full_nolist = response_original %>%
 colnames(W3_full_nolist) = c("vac","vac_int","vac_bad","vac_ob","worry","risk","conspiracy",
                  "nat","h_locus","comp_dist", "comp_mask","comp_hand","he_eco",
                  "judg_gov_covid","judg_gov","PTV_L","PTV_5SM","PTV_BOI","tr_par",
-                 "tr_EU","tr_sci","tr_h","pray","media","sex","age","educ",
+                 "tr_EU","tr_sci","pray","media","sex","age","educ",
                  "reg","eco_insec")
 
 # W3_full_nolist full to do ttest (next section)
@@ -111,7 +104,6 @@ W3_full_nolist = W3_full_nolist %>%
   mutate((across(vac_bad,  ~ 6 - .)), 
   worry = ifelse(worry<=2, 1, 0), 
   conspiracy = ifelse(conspiracy<3, 1, 0),
-  (across(tr_h,  ~ 10 - .)),
   pray = ifelse(pray<=4, 0, 1),
   media = ifelse(media>=4 & media<=7, 1, 0), 
   sex = ifelse(sex==2, 1, 0),
@@ -199,10 +191,7 @@ stargazer(as.data.frame(W3), type = "text", nobs = TRUE)
 ## save
 
 ```{r}
-#still need to delete everything about tr_h, notice indexes will be fucked 
-W3 = W3 %>% 
-  dplyr::select(-tr_h)
-
+#export data
 saveRDS(W3, here("Input", "W3.rds"))
 ```
 
