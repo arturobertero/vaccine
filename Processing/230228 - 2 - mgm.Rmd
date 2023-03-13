@@ -359,8 +359,8 @@ dev.off()
 ```
 
 ```{r}
-# Test: difference of strength of node 2 vs 3 (if the bootstrapped CI include 0, they do not differ)
-differenceTest(edgeacc, 2, 3, "strength")
+# Test: difference of strength of node 5 [conspiracy] vs 20 [hesitancy] (if the bootstrapped CI include 0, they do not differ)
+test_conspiracy_vs_hesitancy = differenceTest(edgeacc, 5, 20, "strength")
 
 # Plot test results for every edge weight in the network
 pdf('../Output/robustness/test_strenghts.pdf', height = 70, width = 50)
