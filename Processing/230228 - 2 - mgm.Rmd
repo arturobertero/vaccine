@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(pacman)
 p_load(tidyverse, here, sjlabelled, stringr, glue, EGAnet, janitor, haven, 
        ggpubr, gridExtra, dplyr, GGally, qgraph, sjmisc, igraph,
-       imager, grid, psych, stargazer, mgm, patchwork, ggplot2, 
+       imager, grid, psych, stargazer, mgm, backbone, ggplot2, 
        NetworkComparisonTest, Matrix, bootnet, matrixcalc, openxlsx, devtools, jtools)
 
 
@@ -381,6 +381,34 @@ comment:
 - smallworldness > 1 -> small world network
 - rnd values > 1 -> small world network
 - averagelength_target (Unweighted)
+
+## Backbone
+
+```{r}
+#model selection
+backbone.suggest(FitW3$pairwise$wadj)
+
+# application of the disparity filter
+backbone_matrix <- disparity(
+  inputGraphMGM,
+  alpha = 0.05,
+  signed = FALSE,
+  mtc = "none",
+  class = "original",
+  narrative = TRUE)
+
+#plot
+set.seed(100)
+GraphMGM<-qgraph(backbone_matrix, 
+  layout = "spring", theme = "Borkulo", 
+  labels = shortnames,nodeNames = longnames,
+  details = FALSE, vsize=6.0, shape = shapes,
+  groups=Totalgroup_comm, color= Totalgroup_cols,
+  legend = TRUE, legend.cex = 0.35, borders = FALSE, 
+  filetype="jpg", filename=here("Output", "backbone.jpg"))
+
+```
+
 
 # Output
 

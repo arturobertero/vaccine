@@ -121,18 +121,46 @@ W3_full_nolist = W3_full_nolist %>%
 ## T-test(s)
 
 ```{r}
+##OLD
+#loop each V and run t.test
+tests_list_old <- lapply(seq_along(W3_full), function(i){
+  t.test(W3_full[[i]], W3_full_nolist[[i]])
+})
+
+pvalues_old = as.data.frame(sapply(tests_list_old, '[[', 'p.value')) 
+
+#print true when the means differ
+pvalues_old[,2] = names(W3_full)
+pvalues_old[,3] = with(pvalues_old,pvalues_old<0.05/29)
+
+
+
+##NEW
+
 #loop each V and run t.test
 tests_list <- lapply(seq_along(W3_full), function(i){
   t.test(W3_full[[i]], W3_full_nolist[[i]])
 })
 
-means = sapply(tests_list, '[[', 'statistic')
+means = sapply(tests_list, '[[', 'estimate')
+dif_mean = means[1,] - means[2,]
 pvalues = as.data.frame(sapply(tests_list, '[[', 'p.value')) 
-cis = sapply(tests_list, '[[', 'conf.int')
 
 #print true when the means differ
-pvalues[,2] = names(W3_full)
-pvalues[,3] = with(pvalues,pvalues<0.05)
+pvalues = pvalues %>%
+  rename(pvalues = "sapply(tests_list, \"[[\", \"p.value\")") %>%
+  bind_cols(names(W3_full))
+
+mult_test = 0.05/nrow(pvalues)
+
+pvalues_response = pvalues %>%
+  rename(variable = "...2")  %>% 
+  bind_cols(dif_mean) %>% 
+  filter(pvalues<mult_test) %>% 
+  rename(dif_mean = "...3") 
+
+pvalues_response = pvalues_response %>% 
+  dplyr::select(variable, dif_mean, pvalues)
 ```
 
 
