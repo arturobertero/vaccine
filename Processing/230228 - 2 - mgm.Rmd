@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(pacman)
 p_load(tidyverse, here, sjlabelled, stringr, glue, EGAnet, janitor, haven, 
        ggpubr, gridExtra, dplyr, GGally, qgraph, sjmisc, igraph,
-       imager, grid, psych, stargazer, mgm, backbone, ggplot2, 
+       grid, psych, stargazer, mgm, backbone, ggplot2, tnet,
        NetworkComparisonTest, Matrix, bootnet, matrixcalc, openxlsx, devtools, jtools)
 
 
@@ -157,7 +157,7 @@ FitW3 <- mgm(W3, type, level, k = 2, binarySign = TRUE)
 ## Community stability
 
 ```{r}
-#function LOAD THE OBJECT down below TO SAVE TIME:
+#LOAD THE OBJECT down below TO SAVE TIME:
 #CommunityStabTotal<-communityStability(W3, type, level, it=1000)
 
 #load the object instead:
@@ -275,14 +275,26 @@ GraphMGMCENT<-qgraph(inputGraphMGM,
   legend = FALSE)
 
 #centrality Total
-centMGM <- centralityTable(GraphMGMCENT,standardized = FALSE)
+centMGM <- centralityTable(GraphMGMCENT,standardized = FALSE, signed = FALSE)
 
 #CentralityPlot Total
 centrality_table = centralityPlot(GraphMGMCENT, include = c("Strength"), scale = "raw",
-               orderBy = "Strength") + theme_nice() + theme(axis.text.y=element_text(hjust=1))
+               orderBy = "Strength", signed = FALSE) + theme_nice() + theme(axis.text.y=element_text(hjust=1))
 
 ggsave(here("Output", "Centrality_Table.jpg"), centrality_table)
 ```
+### Degree centrality
+```{r}
+#Convert to igraph
+igraph_graph <- graph.adjacency(FitW3$pairwise$wadj, mode="undirected", weighted = TRUE)
+
+#Degree centrality
+degree_cent = degree(igraph_graph) 
+
+#Merge vectors
+degree_data <- data.frame(names(W3), degree_cent)
+```
+
 
 ## ASPL
 
@@ -292,6 +304,16 @@ SPLMGM <- centrality(GraphMGM)$ShortestPathLengths
 SPLMGM <- SPLMGM[upper.tri(SPLMGM)]
 #Average shortest path length
 ASPL_MGM <- mean(SPLMGM)
+
+#Check with another function (this does not account for edge weights)
+splmgm = shortest.paths(igraph_graph)
+splmgm <- splmgm[upper.tri(splmgm)]
+aspl_mgm <- mean(splmgm)
+
+#and with tnet from opshal
+spl_o = distance_w(FitW3$pairwise$wadj, directed=NULL, subsample=1)
+spl_o <- spl_o[upper.tri(spl_o)]
+aspl_o <- mean(spl_o)
 ```
 ASPL = 14.0747
 
@@ -407,6 +429,138 @@ GraphMGM<-qgraph(backbone_matrix,
   legend = TRUE, legend.cex = 0.35, borders = FALSE, 
   filetype="jpg", filename=here("Output", "backbone.jpg"))
 
+```
+
+
+## Regressions
+```{r}
+#Fitting logistic regressions
+model_vac_bad <- glm( hesitancy ~ vac_bad + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_vac_ob <- glm( hesitancy ~ vac_ob + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_worry <- glm( hesitancy ~ worry + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_risk <- glm( hesitancy ~ risk + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_conspiracy <- glm( hesitancy ~ conspiracy + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_nat <- glm( hesitancy ~ nat + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_h_locus <- glm( hesitancy ~ h_locus + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_he_eco <- glm( hesitancy ~ he_eco + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_PTV_L <- glm( hesitancy ~ PTV_L + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_PTV_5SM <- glm( hesitancy ~ PTV_5SM + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_PTV_BOI <- glm( hesitancy ~ PTV_BOI + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_tr_sci <- glm( hesitancy ~ tr_sci + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_pray <- glm( hesitancy ~ pray + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_media <- glm( hesitancy ~ media + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_low_comp <- glm( hesitancy ~ low_comp + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_distrust_gov <- glm( hesitancy ~ distrust_gov + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_distrust_inst <- glm( hesitancy ~ distrust_inst + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+```
+
+```{r}
+#Gathering coefficients
+coeff = extract_numeric(model_vac_bad$coefficients[2])
+coeff[2] = extract_numeric(model_vac_ob$coefficients[2])
+coeff[3] = extract_numeric(model_worry$coefficients[2])
+coeff[4] = extract_numeric(model_risk$coefficients[2])
+coeff[5] = extract_numeric(model_conspiracy$coefficients[2])
+coeff[6] = extract_numeric(model_nat$coefficients[2])
+coeff[7] = extract_numeric(model_h_locus$coefficients[2])
+coeff[8] = extract_numeric(model_he_eco$coefficients[2])
+coeff[9] = extract_numeric(model_PTV_L$coefficients[2])
+coeff[10] = extract_numeric(model_PTV_5SM$coefficients[2])
+coeff[11] = extract_numeric(model_PTV_BOI$coefficients[2])
+coeff[12] = extract_numeric(model_tr_sci$coefficients[2])
+coeff[13] = extract_numeric(model_pray$coefficients[2])
+coeff[14] = extract_numeric(model_media$coefficients[2])
+coeff[15] = extract_numeric(model_low_comp$coefficients[2])
+coeff[16] = extract_numeric(model_distrust_gov$coefficients[2])
+coeff[17] = extract_numeric(model_distrust_inst$coefficients[2])
+
+  #Transform in odds ratio
+  coeff_exp = unlist(lapply(coeff, exp))
+
+#Significance
+summary(model_vac_bad)$coeff[-1,4] < 0.05
+summary(model_vac_ob)$coeff[-1,4] < 0.05
+summary(model_worry)$coeff[-1,4] < 0.05 #not significant
+summary(model_risk)$coeff[-1,4] < 0.05
+summary(model_conspiracy)$coeff[-1,4] < 0.05
+summary(model_nat)$coeff[-1,4] < 0.05
+summary(model_h_locus)$coeff[-1,4] < 0.05
+summary(model_he_eco)$coeff[-1,4] < 0.05
+summary(model_PTV_L)$coeff[-1,4] < 0.05
+summary(model_PTV_5SM)$coeff[-1,4] < 0.05 #not significant
+summary(model_PTV_BOI)$coeff[-1,4] < 0.05
+summary(model_tr_sci)$coeff[-1,4] < 0.05
+summary(model_pray)$coeff[-1,4] < 0.05 #not significant
+summary(model_media)$coeff[-1,4] < 0.05 #not significant
+summary(model_low_comp)$coeff[-1,4] < 0.05
+summary(model_distrust_gov)$coeff[-1,4] < 0.05
+summary(model_distrust_inst)$coeff[-1,4] < 0.05
+
+  #vector for significance
+  significance = rep(c(1),17)
+  significance[3] = 0
+  significance[10] = 0
+  significance[13] = 0
+  significance[14] = 0
+ 
+#Gatering strength scores
+strength = centrality_table$data$value
+strength = strength[-c(15:20)]
+
+#Gatering degree
+degree_cent_graph = degree_cent[-c(15:20)]
+
+#Gathering names
+names = as.vector(names(W3))
+names = names[-c(15:20)]
+
+#Merging into a df
+scatterplot = data.frame(names, coeff_exp, strength, degree_cent_graph, significance)
+
+#as factors
+scatterplot$coeff_exp = as.factor(scatterplot$coeff_exp)
+scatterplot$strength = as.factor(scatterplot$strength)
+scatterplot$degree_cent_graph = as.factor(scatterplot$degree_cent_graph)
+scatterplot$significance = as.factor(scatterplot$significance)
+```
+
+## Scatterplot
+```{r}
+#Conversion
+ggplot(scatterplot, aes(x=strength, y=degree_cent_graph)) + geom_point()
 ```
 
 

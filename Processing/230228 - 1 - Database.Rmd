@@ -10,7 +10,7 @@ date: '2022-10-25'
 #packages
 library("pacman")
 p_load(tidyverse, here, sjlabelled, stringr, glue, janitor, haven, stargazer, 
-       ltm, skimr)
+       ltm, skimr, readxl)
 
 #remove scientific notation
 options(scipen=999)
@@ -117,6 +117,25 @@ W3_full_nolist = W3_full_nolist %>%
 # I had 9325 before listwise, 1535 after. It means I m working with 16,46% of 
 # the sample. Hence, I ll do t test full sample vs restricted one.
 ```
+
+## Inspect true number of missing
+```{r}
+#Load valid cases spreadshit (avaiable at: https://dataverse.unimi.it/dataset.xhtml?persistentId=doi:10.13130/RD_UNIMI/FF0ABQ)
+valid = read_excel(here("Input", "Valid_cases.xlsx"))
+
+#Select V I used in the analysis to retrieve true number of N
+valid = valid %>% 
+     dplyr::select(c(v2,v3,j5_01,v1,f10,f3,f9,h1_04,j4bis_b,b2_03,b2_06,b2_07,d5,d1,
+                     e4_bis,k3_03,k3_04,k3_05,e2_01,e2_04,j5_02,g7,c5,s1,s2,
+                     s9,s8,c1))
+
+#Extract miniumu number of obs per question
+min(valid)
+# TRUE N = 3767. Thus I had 3767 before listwise, 1535 after. It means I m working with 40.7% of 
+# the sample.
+
+```
+
 
 ## T-test(s)
 
