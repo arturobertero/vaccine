@@ -1,0 +1,7 @@
+"names","coeff_exp","strength","degree","edge_weight","Significance"
+"vac_bad",3.38833565900952,1.59022913634335,10,0.95,"Significant"
+"vac_free",5.67088482631014,1.34093345526959,4,0.34,"Significant"
+"conspiracy",5.17796812988749,1.76409341839993,15,0.34,"Significant"
+"nat",1.32075781077654,1.23558691686519,15,0.12,"Significant"
+"low_comp",1.56652932543794,1.40253566706604,11,0.07,"Significant"
+"educ",1.764246,1.061313041,10,0.07,"Significant"

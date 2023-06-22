@@ -94,10 +94,6 @@ capture.output(frq_distr_tab, file = here("Output", "descriptives", "frq_distr_t
 | Rural region                     |                                                     |                                      |   |   |   |
 
 
-## Predictors with references (theory)
-
-go on datawrapper, you have the excel base file in Input folder
-
 ## Empirical predictors
 
 ```{r table2, echo=FALSE, message=FALSE, results='asis', warnings=FALSE}
@@ -114,3 +110,12 @@ table_pred <- "
 "
 cat(table_pred) # output the table in a format good for HTML/PDF/docx conversion
 ```
+
+```{r}
+final_tab = readRDS(here("Input", "final_tab.RDS"))
+final_tab_z = readRDS(here("Input", "final_tab_z.RDS"))
+
+write.csv(final_tab, here("Input", "final_tab.csv"), row.names=FALSE)
+write.csv(final_tab_z, here("Input", "final_tab_z.csv"), row.names=FALSE)
+```
+

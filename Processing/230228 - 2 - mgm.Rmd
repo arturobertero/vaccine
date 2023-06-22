@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(pacman)
 p_load(tidyverse, here, sjlabelled, stringr, glue, EGAnet, janitor, haven, 
        ggpubr, gridExtra, dplyr, GGally, qgraph, sjmisc, igraph,
-       grid, psych, stargazer, mgm, backbone, ggplot2, tnet,
+       grid, psych, stargazer, mgm, backbone, ggplot2, tnet, ggrepel,
        NetworkComparisonTest, Matrix, bootnet, matrixcalc, openxlsx, devtools, jtools)
 
 
@@ -485,8 +485,18 @@ model_distrust_gov <- glm( hesitancy ~ distrust_gov + sex + age + educ + reg + e
 
 model_distrust_inst <- glm( hesitancy ~ distrust_inst + sex + age + educ + reg + eco_insec, 
                 data = W3, family = binomial)
+
+#Additional model for final table
+model_educ <- glm( hesitancy ~ educ + sex + age + reg + eco_insec, 
+                data = W3, family = binomial)
+  #coeff
+  coeff_educ =  exp(extract_numeric(model_educ$coefficients[2]))
+  
+  #significance
+  summary(model_educ)$coeff[-1,4] < 0.05
 ```
 
+## Scatterplot data
 ```{r}
 #Gathering coefficients
 coeff = extract_numeric(model_vac_bad$coefficients[2])
@@ -509,7 +519,10 @@ coeff[17] = extract_numeric(model_distrust_inst$coefficients[2])
 
   #Transform in odds ratio
   coeff_exp = unlist(lapply(coeff, exp))
+```
 
+
+```{r}
 #Significance
 summary(model_vac_bad)$coeff[-1,4] < 0.05
 summary(model_vac_ob)$coeff[-1,4] < 0.05
@@ -530,37 +543,101 @@ summary(model_distrust_gov)$coeff[-1,4] < 0.05
 summary(model_distrust_inst)$coeff[-1,4] < 0.05
 
   #vector for significance
-  significance = rep(c(1),17)
-  significance[3] = 0
-  significance[10] = 0
-  significance[13] = 0
-  significance[14] = 0
- 
-#Gatering strength scores
-strength = centrality_table$data$value
-strength = strength[-c(15:20)]
-
-#Gatering degree
-degree_cent_graph = degree_cent[-c(15:20)]
-
-#Gathering names
-names = as.vector(names(W3))
-names = names[-c(15:20)]
-
-#Merging into a df
-scatterplot = data.frame(names, coeff_exp, strength, degree_cent_graph, significance)
-
-#as factors
-scatterplot$coeff_exp = as.factor(scatterplot$coeff_exp)
-scatterplot$strength = as.factor(scatterplot$strength)
-scatterplot$degree_cent_graph = as.factor(scatterplot$degree_cent_graph)
-scatterplot$significance = as.factor(scatterplot$significance)
+  Significance = rep(c("Significant"),17)
+  Significance[3] = "Not significant"
+  Significance[10] = "Not significant"
+  Significance[13] = "Not significant"
+  Significance[14] = "Not significant"
 ```
 
-## Scatterplot
+
 ```{r}
-#Conversion
-ggplot(scatterplot, aes(x=strength, y=degree_cent_graph)) + geom_point()
+#Gatering strength scores
+strength = centMGM %>%
+  filter(measure=="Strength") %>% 
+  select(value) %>%
+  filter(!row_number() %in% c(15:20))
+```
+
+
+```{r}
+#Gatering degree
+degree_cent_graph = degree_cent[-c(15:20)]
+```
+
+
+```{r}
+#Gathering names
+names = shortnames
+names = names[-c(15:20)]
+```
+
+
+```{r}
+#Merging into a df1
+scatterplot = data.frame(names, coeff_exp, strength, Significance) %>% 
+  rename(strength = value)
+scatterplot$names = as.factor(scatterplot$names)
+scatterplot$coeff_exp = as.numeric(scatterplot$coeff_exp)
+scatterplot$strength = as.numeric(scatterplot$strength)
+scatterplot$Significance = as.factor(scatterplot$Significance)
+
+#Merging into a df2
+scatterplot_degree = data.frame(names, coeff_exp, degree_cent_graph, Significance)
+scatterplot_degree$degree_cent_graph = as.numeric(scatterplot_degree$degree_cent_graph)
+```
+
+## Scatterplots 
+```{r}
+#Strength
+graph_strength = ggplot(scatterplot, aes(x=strength, y=coeff_exp, label = names)) + 
+  geom_point((aes(color=Significance))) + theme_nice() + 
+  geom_smooth(method=lm, se = FALSE, linetype = "dotted", color = "#DCDCDC") +
+  geom_text_repel(size = 3) +
+  xlab("Strength centrality") + ylab("Regression coefficient") + 
+  scale_fill_discrete(labels=c('label1', 'label2'))
+
+ggsave(here("Output", "graph_strength.jpg"), graph_strength, height = 5, width = 8)
+```
+
+```{r}
+#Degree
+graph_degree = ggplot(scatterplot_degree, aes(x=degree_cent_graph, y=coeff_exp, label = names)) + 
+  geom_point((aes(color=Significance))) + theme_nice() + 
+  geom_smooth(method=lm, se = FALSE, linetype = "dotted", color = "#DCDCDC") +
+  geom_text_repel(size = 3) +
+  xlab("Degree centrality") + ylab("Regression coefficient") + 
+  scale_fill_discrete(labels=c('label1', 'label2'))
+
+ggsave(here("Output", "graph_degree.jpg"), graph_degree, height = 5, width = 8)
+```
+
+## Final table empirical predictors
+```{r}
+#Df with variables that (1) are tied to hesitancy, (2) are in the backbone
+final_tab = scatterplot %>% 
+  mutate(degree = scatterplot_degree$degree_cent_graph) %>% 
+  add_row(names = "educ", coeff_exp = 1.764246, strength = 1.061313041, 
+          Significance = "Significant", degree = 10) %>% 
+  filter(names %in% c("vac_free","vac_bad","low_comp","conspiracy","nat","educ")) %>% 
+  mutate(edge_weight=c(0.95, 0.34, 0.34, 0.12, 0.07, 0.07)) %>% 
+  relocate(Significance, .after = edge_weight) 
+
+    #conversion of type
+    final_tab$names = as.factor(final_tab$names)
+    final_tab$coeff_exp = as.numeric(final_tab$coeff_exp)
+    final_tab$strength = as.numeric(final_tab$strength)
+    final_tab$degree = as.numeric(final_tab$degree)
+    final_tab$edge_weight = as.numeric(final_tab$edge_weight)
+    final_tab$Significance = as.factor(final_tab$Significance)
+
+#Z scores
+final_tab_z = final_tab %>% 
+  mutate(coeff_exp = (coeff_exp - mean(coeff_exp))/sd(coeff_exp), 
+         strength = (strength - mean(strength))/sd(strength),
+         degree = (degree - mean(degree))/sd(degree),
+         edge_weight = (edge_weight - mean(edge_weight))/sd(edge_weight)) %>% 
+  select(-c(degree, Significance))
 ```
 
 
@@ -574,6 +651,9 @@ saveRDS(CommunityStabTotal, here("Input", "CommunityStabTotal.rds"))
 #bootnet
 saveRDS(edgeacc, here("Input","edgeacc.rds"))
 saveRDS(centstab, here("Input", "centstab.rds"))
+#final tab
+saveRDS(final_tab, here("Input", "final_tab.rds"))
+saveRDS(final_tab_z, here("Input", "final_tab_z.rds"))
 ```
 
 ## Edge weight to excel
