@@ -305,7 +305,7 @@ SPLMGM <- SPLMGM[upper.tri(SPLMGM)]
 #Average shortest path length
 ASPL_MGM <- mean(SPLMGM)
 
-#Check with another function (this does not account for edge weights)
+#Check with another function (this is unweighted ASPL)
 splmgm = shortest.paths(igraph_graph)
 splmgm <- splmgm[upper.tri(splmgm)]
 aspl_mgm <- mean(splmgm)
