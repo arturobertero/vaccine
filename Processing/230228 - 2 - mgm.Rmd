@@ -264,6 +264,85 @@ GraphMGM<-qgraph(inputGraphMGM,
 dev.off()
 ```
 
+### Plot with predictability
+```{r}
+#Predicted values
+p_obj <- predict(FitW3, W3, errorCat = c("CC","nCC","CCmarg"), errorCon = c("R2"))
+
+#insert them in a list, and compute different metrics for cathegorical variables
+error_list <- list() 
+error_list[[1]] = p_obj$errors[1,2]
+error_list[[2]] = p_obj$errors[2,2]
+  beyondmarg <- p_obj$errors[3,3]-p_obj$errors[3,5]
+  error_list[[3]] = c(p_obj$errors[3,5],beyondmarg)
+error_list[[4]] = p_obj$errors[4,2]
+  beyondmarg <- p_obj$errors[5,3]-p_obj$errors[5,5]
+  error_list[[5]] = c(p_obj$errors[5,5],beyondmarg)
+error_list[[6]] = p_obj$errors[6,2]
+error_list[[7]] = p_obj$errors[7,2]
+error_list[[8]] = p_obj$errors[8,2]
+error_list[[9]] = p_obj$errors[9,2]
+error_list[[10]] = p_obj$errors[10,2]
+error_list[[11]] = p_obj$errors[11,2]
+error_list[[12]] = p_obj$errors[12,2]
+error_list[[13]] = p_obj$errors[13,2]
+  beyondmarg <- p_obj$errors[14,3]-p_obj$errors[14,5]
+  error_list[[14]] = c(p_obj$errors[14,5],beyondmarg)
+  beyondmarg <- p_obj$errors[15,3]-p_obj$errors[15,5]
+  error_list[[15]] = c(p_obj$errors[15,5],beyondmarg)
+error_list[[16]] = p_obj$errors[16,2]
+  beyondmarg <- p_obj$errors[17,3]-p_obj$errors[17,5]
+  error_list[[17]] = c(p_obj$errors[17,5],beyondmarg)
+error_list[[18]] = p_obj$errors[18,2]
+error_list[[19]] = p_obj$errors[19,2]
+  beyondmarg <- p_obj$errors[20,3]-p_obj$errors[20,5]
+  error_list[[20]] = c(p_obj$errors[20,5],beyondmarg)
+error_list[[21]] = p_obj$errors[21,2]
+error_list[[22]] = p_obj$errors[22,2]
+error_list[[23]] = p_obj$errors[23,2]
+
+# List for Colors 
+color_list <- list()
+color_list[[1]] = "#90B4D4"
+color_list[[2]] = "#90B4D4"
+color_list[[3]] = c("#ffa500", "#ff4300")
+color_list[[4]] = "#90B4D4"
+color_list[[5]] = c("#ffa500", "#ff4300")
+color_list[[6]] = "#90B4D4"
+color_list[[7]] = "#90B4D4"
+color_list[[8]] = "#90B4D4"
+color_list[[9]] = "#90B4D4"
+color_list[[10]] = "#90B4D4"
+color_list[[11]] = "#90B4D4"
+color_list[[12]] = "#90B4D4"
+color_list[[13]] = "#90B4D4"
+color_list[[14]] = c("#ffa500", "#ff4300")
+color_list[[15]] = c("#ffa500", "#ff4300")
+color_list[[16]] = "#90B4D4"
+color_list[[17]] = c("#ffa500", "#ff4300")
+color_list[[18]] = "#90B4D4"
+color_list[[19]] = "#90B4D4"
+color_list[[20]] = c("#ffa500", "#ff4300")
+color_list[[21]] = "#90B4D4"
+color_list[[22]] = "#90B4D4"
+color_list[[23]] = "#90B4D4"
+```
+
+```{r}
+# The final plot
+set.seed(100)
+GraphMGM<-qgraph(inputGraphMGM, pie = error_list, pieColor = color_list,
+  layout = "spring", theme = "Borkulo", 
+  labels = shortnames, nodeNames = longnames,
+  cut = 0.10, minimum = 0.07, maximum = 1, 
+  details = FALSE, vsize=6.0, shape = shapes,
+  groups=Totalgroup_comm, color= Totalgroup_cols,
+  legend = TRUE, legend.cex = 0.35, borders = TRUE, 
+  filetype="jpg", filename=here("Output", "MGM_min_07_predictability"))
+
+
+```
+
 ## Centrality estimates
 
 ```{r}
@@ -293,6 +372,9 @@ degree_cent = degree(igraph_graph)
 
 #Merge vectors
 degree_data <- data.frame(names(W3), degree_cent)
+
+degree_data$degree_cent
+
 ```
 
 
@@ -555,8 +637,13 @@ summary(model_distrust_inst)$coeff[-1,4] < 0.05
 #Gatering strength scores
 strength = centMGM %>%
   filter(measure=="Strength") %>% 
-  select(value) %>%
+  dplyr::select(value) %>%
   filter(!row_number() %in% c(15:20))
+
+cent_all = centMGM %>%
+  filter(measure=="Strength") %>% 
+  dplyr::select(value, node) %>% 
+  mutate_if(is.numeric, ~round(., 2))
 ```
 
 
@@ -637,7 +724,7 @@ final_tab_z = final_tab %>%
          strength = (strength - mean(strength))/sd(strength),
          degree = (degree - mean(degree))/sd(degree),
          edge_weight = (edge_weight - mean(edge_weight))/sd(edge_weight)) %>% 
-  select(-c(degree, Significance))
+          mutate_if(is.numeric, ~round(., 2))
 ```
 
 

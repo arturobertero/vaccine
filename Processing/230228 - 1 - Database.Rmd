@@ -179,7 +179,8 @@ pvalues_response = pvalues %>%
   rename(dif_mean = "...3") 
 
 pvalues_response = pvalues_response %>% 
-  dplyr::select(variable, dif_mean, pvalues)
+  dplyr::select(variable, dif_mean, pvalues) %>% 
+  mutate_if(is.numeric, ~round(., 2))
 ```
 
 
