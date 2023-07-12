@@ -1,0 +1,1029 @@
+---
+title: "20221209 - 2.mgm"
+output:
+  word_document: default
+  html_document: default
+date: "2022-12-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(pacman)
+p_load(tidyverse, here, sjlabelled, stringr, glue, EGAnet, janitor, haven, 
+       ggpubr, gridExtra, dplyr, GGally, qgraph, sjmisc, igraph, sjPlot,
+       grid, psych, stargazer, mgm, backbone, ggplot2, tnet, ggrepel,
+       NetworkComparisonTest, Matrix, bootnet, matrixcalc, openxlsx, devtools, jtools)
+
+
+```
+
+
+# Input
+
+```{r}
+W3 = readRDS((here("Input", "W3.rds")))
+```
+
+# Processing
+
+## Network objects
+
+```{r}
+## network objects
+type <-c("g","g","c","g","c","g","g","g","g","g","g","g","c","c","c","g","c",
+         "c","g","c","g","g","g")
+
+level <-c("1","1","2","1","2","1","1","1","1","1","1","1","2","2","2","1","2"
+          ,"2","1","2","1","1","1")
+
+shortnames <- c(
+"vac_bad",
+"vac_free",
+"low_worry",
+"low_risk",
+"conspiracy",
+"nat",
+"int_locus",
+"low_col_resp",
+"PTV_L",
+"PTV_5SM",
+"PTV_BOI",
+"distrust_sci",
+"pray",
+"media",
+"female",
+"young",
+"low_educ",
+"rural",
+"eco_insec",
+"hesitancy",
+"low_comp",
+"distrust_gov",
+"distrust_inst")
+
+longnames <- c(
+"Vaccine bad for health",
+"Against mandatory vaccination",
+"Low worry about infection",
+"Low risk perception",
+"Endorsing conspiracy theories",
+"Trust in alternative medicine",
+"Internal health locus of control",
+"Low sense of collective responsability",
+"Propensity to vote for L",
+"Propensity to vote for 5SM",
+"Propensity to vote for BOI",
+"Distrust of science",
+"Religion, pray",
+"Digital media diet",
+"Sex, female",
+"Age, young",
+"Educational level, low",
+"Living in a rural region",
+"Economic insecurity",
+"Vaccine hesitancy",
+"Low compliance with preventive behaviors",
+"Disapproval of Government",
+"Distrust of institutions")
+
+shapes <- c(
+"circle", 
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"circle",
+"square",
+"circle",
+"circle",
+"circle")
+
+# Community detection function (modified to allow for iterations)
+communityStability <- function(data, type, level, iterations)
+{
+  
+  communityMemberships <- list()
+  
+  for (i in 1:iterations)
+  {
+    fitGraph <- mgm(data, type, level, k = 2, verbatim = TRUE)
+    iGraph<- graph_from_adjacency_matrix(abs
+                                         (fitGraph$pairwise$wadj), "undirected", weighted =
+                                           TRUE)
+    communityMemberships[[i]] <- cluster_walktrap(iGraph)$membership
+  }
+  
+  communityOverlap <- matrix(NA, length(data), length(data))
+  
+  for(j in 1:length(data))
+  {
+    
+    overlapPerNode <- matrix(NA, iterations, ncol(communityOverlap))
+    
+    for(k in 1: iterations)
+    {
+      overlapPerNode[k,] <- as.numeric(communityMemberships[[k]][j] == communityMemberships[[k]])
+    }
+    
+    communityOverlap[j,] <- apply(overlapPerNode, 2, mean)
+  }
+  
+  diag(communityOverlap) <- 0
+  
+  return(list(communityMemberships = communityMemberships, communityOverlap = communityOverlap))
+  
+}
+```
+## Fit model
+```{r}
+set.seed(1)
+FitW3 <- mgm(W3, type, level, k = 2, binarySign = TRUE)
+```
+
+## Community stability (Supplement S1)
+
+```{r}
+#LOAD THE OBJECT down below TO SAVE TIME:
+CommunityStabTotal<-communityStability(W3, type, level, it=1000)
+
+#load the object instead:
+CommunityStabTotal = readRDS(here("Input", "CommunityStabTotal.rds"))
+```
+
+```{r}
+# Visualize community stability 
+pdf(file = '../Output/Supplement/community_stability.pdf',paper = "USr",
+    height = 9, width = 12)
+qgraph(CommunityStabTotal$communityOverlap, layout = "spring", 
+       theme = "Borkulo", labels = shortnames,
+       nodeNames = longnames,vsize=4.0,
+       edge.labels=FALSE, legend = TRUE, legend.cex = 0.3)
+dev.off()
+
+# Vizualise detected communities 
+inputCommDetection_total<-CommunityStabTotal$communityOverlap
+inputCommDetection_total[which(inputCommDetection_total <= .90)] <- 0
+
+pdf(file = '../Output/Supplement/detected_communities.pdf',paper = "USr",
+    height = 9, width = 12)
+qgraph(inputCommDetection_total, layout = "spring", theme = "Borkulo",
+       labels = shortnames, nodeNames = longnames, vsize=4.0,
+       edge.labels=FALSE, legend = TRUE, legend.cex = 0.3)
+dev.off()
+```
+
+```{r}
+Totalgroup_comm <- list(
+ " "=c(1,2,12,20),
+ " "=c(3,4),
+ " "=c(5,8),
+ " "=c(6,7,21),
+ " "=c(9,11),
+ " "=c(10,22,23),
+ " "=c(13:19))
+
+# define nice colors
+Totalgroup_cols <- c("#BDE6F1","#E96479","#3FA796","#B4CFB0",
+                              "#DF7861","#C3ACD0","#FFD56F")
+```
+
+## Plot no minimum (Supplement S1)
+
+```{r}
+#enables theme colorblind because we don't need to specify edge.color
+inputGraphMGM <- FitW3$pairwise$wadj
+signsGraphMGM <- FitW3$pairwise$signs
+signsGraphMGM[which(is.na(signsGraphMGM))] <- 1
+inputGraphMGM <- inputGraphMGM*signsGraphMGM
+
+# Plot 
+set.seed(1)
+pdf(file = '../Output/Supplement/MGM_nomin.pdf',paper = "USr", height = 9, width = 12)
+GraphMGM<-qgraph(inputGraphMGM, 
+  layout = "spring", theme = "Borkulo", 
+  labels = shortnames, nodeNames = longnames,
+  cut = 0.10, maximum = 1, 
+  details = FALSE, vsize=6.0, shape = shapes,
+  groups=Totalgroup_comm, color= Totalgroup_cols,
+  legend = TRUE, legend.cex = 0.4, borders = FALSE)
+dev.off()
+```
+
+### Plot with predictability (Article)
+```{r}
+#Predicted values
+p_obj <- predict(FitW3, W3, errorCat = c("CC","nCC","CCmarg"), errorCon = c("R2"))
+
+#insert them in a list, and compute different metrics for cathegorical variables
+error_list <- list() 
+error_list[[1]] = p_obj$errors[1,2]
+error_list[[2]] = p_obj$errors[2,2]
+  beyondmarg <- p_obj$errors[3,3]-p_obj$errors[3,5]
+  error_list[[3]] = c(p_obj$errors[3,5],beyondmarg)
+error_list[[4]] = p_obj$errors[4,2]
+  beyondmarg <- p_obj$errors[5,3]-p_obj$errors[5,5]
+  error_list[[5]] = c(p_obj$errors[5,5],beyondmarg)
+error_list[[6]] = p_obj$errors[6,2]
+error_list[[7]] = p_obj$errors[7,2]
+error_list[[8]] = p_obj$errors[8,2]
+error_list[[9]] = p_obj$errors[9,2]
+error_list[[10]] = p_obj$errors[10,2]
+error_list[[11]] = p_obj$errors[11,2]
+error_list[[12]] = p_obj$errors[12,2]
+error_list[[13]] = p_obj$errors[13,2]
+  beyondmarg <- p_obj$errors[14,3]-p_obj$errors[14,5]
+  error_list[[14]] = c(p_obj$errors[14,5],beyondmarg)
+  beyondmarg <- p_obj$errors[15,3]-p_obj$errors[15,5]
+  error_list[[15]] = c(p_obj$errors[15,5],beyondmarg)
+error_list[[16]] = p_obj$errors[16,2]
+  beyondmarg <- p_obj$errors[17,3]-p_obj$errors[17,5]
+  error_list[[17]] = c(p_obj$errors[17,5],beyondmarg)
+error_list[[18]] = p_obj$errors[18,2]
+error_list[[19]] = p_obj$errors[19,2]
+  beyondmarg <- p_obj$errors[20,3]-p_obj$errors[20,5]
+  error_list[[20]] = c(p_obj$errors[20,5],beyondmarg)
+error_list[[21]] = p_obj$errors[21,2]
+error_list[[22]] = p_obj$errors[22,2]
+error_list[[23]] = p_obj$errors[23,2]
+
+# List for Colors 
+color_list <- list()
+color_list[[1]] = "#90B4D4"
+color_list[[2]] = "#90B4D4"
+color_list[[3]] = c("#ffa500", "#ff4300")
+color_list[[4]] = "#90B4D4"
+color_list[[5]] = c("#ffa500", "#ff4300")
+color_list[[6]] = "#90B4D4"
+color_list[[7]] = "#90B4D4"
+color_list[[8]] = "#90B4D4"
+color_list[[9]] = "#90B4D4"
+color_list[[10]] = "#90B4D4"
+color_list[[11]] = "#90B4D4"
+color_list[[12]] = "#90B4D4"
+color_list[[13]] = "#90B4D4"
+color_list[[14]] = c("#ffa500", "#ff4300")
+color_list[[15]] = c("#ffa500", "#ff4300")
+color_list[[16]] = "#90B4D4"
+color_list[[17]] = c("#ffa500", "#ff4300")
+color_list[[18]] = "#90B4D4"
+color_list[[19]] = "#90B4D4"
+color_list[[20]] = c("#ffa500", "#ff4300")
+color_list[[21]] = "#90B4D4"
+color_list[[22]] = "#90B4D4"
+color_list[[23]] = "#90B4D4"
+```
+
+```{r}
+# The final plot
+set.seed(100)
+GraphMGM<-qgraph(inputGraphMGM, pie = error_list, pieColor = color_list,
+  layout = "spring", theme = "Borkulo", 
+  labels = shortnames, nodeNames = longnames,
+  cut = 0.10, minimum = 0.07, maximum = 1, 
+  details = FALSE, vsize=6.0, shape = shapes,
+  groups=Totalgroup_comm, color= Totalgroup_cols,
+  legend = TRUE, legend.cex = 0.35, borders = TRUE, 
+  filetype="jpg", filename=here("Output", "Article", "MGM_min_07_predictability"))
+```
+
+## Centrality estimates
+
+```{r}
+#graph with complete labels for centrality plot
+GraphMGMCENT<-qgraph(inputGraphMGM, 
+  layout = "spring", theme = "colorblind",
+  labels = longnames, minimum = 0,
+  cut = 0.10, maximum = 1, details = TRUE,
+  legend = FALSE)
+
+#centrality Total
+centMGM <- centralityTable(GraphMGMCENT,standardized = FALSE, signed = FALSE)
+
+#CentralityPlot Total
+centrality_table = centralityPlot(GraphMGMCENT, include = c("Strength"), scale = "raw",
+               orderBy = "Strength", signed = FALSE) + theme_nice() + theme(axis.text.y=element_text(hjust=1))
+
+ggsave(here("Output", "Article", "Centrality_Table.jpg"), centrality_table)
+```
+### Degree centrality
+```{r}
+#Convert to igraph
+igraph_graph <- graph.adjacency(FitW3$pairwise$wadj, mode="undirected", weighted = TRUE)
+
+#Degree centrality
+degree_cent = degree(igraph_graph) 
+
+#Merge vectors
+degree_data <- data.frame(names(W3), degree_cent)
+```
+
+
+## ASPL
+
+```{r}
+#Shortest Path Lenght with tnet from opshal
+spl_o = distance_w(FitW3$pairwise$wadj, directed=NULL, subsample=1)
+spl_o <- spl_o[upper.tri(spl_o)]
+aspl_o <- mean(spl_o)
+```
+ASPL = 1.643193
+
+## Bootstrap (Supplement S1)
+
+#### Edge accuracy
+
+```{r}
+#edge weight accuracy: non parametric bootstrap with 8 cores
+#edgeacc =  bootnet(W3, nBoots = 1000, nCores = 8, 'mgm')
+
+#load the object instead:
+edgeacc = readRDS(here("Input", "edgeacc.rds"))
+
+#plot 1
+pdf('../Output/Supplement/robustness/edge_accuracy.pdf', height = 70, width = 50)
+plot(edgeacc, labels = longnames, order = "sample")
+dev.off()
+
+#Plot 2
+pdf('../Output/Supplement/robustness/edge_accuracy_CI.pdf', height = 70, width = 50)
+plot(edgeacc, plot = "interval", split0 = TRUE, order="sample", labels=longnames)
+dev.off()
+
+#summary
+saummary_edgeacc = summary(edgeacc, statistics = c("edge", "strength"), 
+                            perNode = FALSE, rank = FALSE) 
+```
+
+#### Centrality stability (Supplement S1)
+
+```{r}
+# case dropping bootstrap
+#centstab = bootnet(W3, nBoots = 1000, 'mgm', type = "case", nCores = 8)
+
+#load the object instead:
+centstab = readRDS(here("Input", "centstab.rds"))
+
+#plot 1
+pdf('../Output/Supplement/robustness/Centrality_stability.pdf', height = 70, width = 50)
+plot(centstab, "Strength", perNode = TRUE, labels = longnames,
+     subsetRange = c(100,50))
+dev.off()
+
+#Plot 2
+pdf('../Output/Supplement/robustness/Centrality_stability_CI.pdf', height = 70, width = 50)
+plot(centstab, "Strength", CIstyle =  "quantiles")
+dev.off()
+
+#CS-coefficient (result should be above 0.25, better if above 0.5)
+corstab = corStability(centstab)
+```
+
+#### Testing Edge and centrality differences (Supplement S1)
+
+```{r}
+# Test: difference of weight ties 2-3 vs 4-5
+differenceTest(edgeacc, 2--3, 3--4, "strength")
+
+# Plot test results for every edge weight in the network
+pdf('../Output/Supplement/robustness/test_edges.pdf', height = 70, width = 50)
+plot(edgeacc, "edge", plot = "difference", onlyNonZero = TRUE, order = "sample", 
+     labels = T)
+dev.off()
+```
+
+```{r}
+# Test: difference of strength of node 5 [conspiracy] vs 20 [hesitancy] (if the bootstrapped CI include 0, they do not differ)
+test_conspiracy_vs_hesitancy = differenceTest(edgeacc, 5, 20, "strength")
+
+# Plot test results for every edge weight in the network
+pdf('../Output/Supplement/robustness/test_strenghts.pdf', height = 70, width = 50)
+plot(edgeacc, "strength", order = "mean", labels = T)
+dev.off()
+```
+## Additional robustness check (Supplement S1)
+```{r}
+#Creating serial number for each row
+W3_robustness = W3
+W3_robustness$id = 1:nrow(W3)
+
+#Splitting randomly the original data frame in two partitions
+W3_robustness_a = W3_robustness %>% dplyr::sample_frac(.50) 
+W3_robustness_b = dplyr::anti_join(W3_robustness, W3_robustness_a, by = 'id') 
+
+#Remove id variable
+W3_robustness_a = W3_robustness_a %>% dplyr::select(-id)
+W3_robustness_b = W3_robustness_b %>% dplyr::select(-id)
+
+#Fitting two mgm
+set.seed(1)
+FitW3_robustness_a <- mgm(W3_robustness_a, type, level, k = 2, binarySign = TRUE)
+
+set.seed(1)
+FitW3_robustness_b <- mgm(W3_robustness_b, type, level, k = 2, binarySign = TRUE)
+```
+
+```{r}
+#Network Comparison Test between the two mgm 
+#(NO CORRECTION FOR MULTIPLE TESTING)
+set.seed(1)
+robustness_a_b = NCT(W3_robustness_a, W3_robustness_b, it = 1000,
+      test.edges=TRUE, edges="all", 
+      progressbar=TRUE, p.adjust.methods= c("none"), 
+      test.centrality=TRUE, 
+      centrality=c("strength"),nodes="all")
+
+#Network Comparison Test with BONFERRONI CORRECTION:
+#NO DIFFERENCES EMERGE
+set.seed(1)
+robustness_a_b_bonferroni = NCT(W3_robustness_a, W3_robustness_b, it = 1000,
+      test.edges=TRUE, edges="all", 
+      progressbar=TRUE, p.adjust.methods= c("bonferroni"), 
+      test.centrality=TRUE, 
+      centrality=c("strength"),nodes="all")
+```
+
+
+```{r}
+#Visualize results of edge tests
+inputNCTgraph <- FitW3_robustness_a$pairwise$wadj - FitW3_robustness_b$pairwise$wadj
+inputNCTgraph[upper.tri(inputNCTgraph)][which(robustness_a_b$einv.pvals$`p-value` >= .05)] <- 0
+inputNCTgraph <- forceSymmetric(inputNCTgraph)
+
+pdf(here("Output", "Supplement", "nct.pdf"))
+nct_plot = qgraph(inputNCTgraph, labels = shortnames, edge.labels = TRUE)
+dev.off()
+```
+
+```{r}
+#Visualize results of centrality tests
+#Calculate strength
+Graph_robustness_a <-qgraph(FitW3_robustness_a$pairwise$wadj, labels = shortnames) 
+cent_robustness_a <- centralityTable(Graph_robustness_a)
+
+Graph_robustness_b <-qgraph(FitW3_robustness_b$pairwise$wadj, labels = shortnames) 
+cent_robustness_b <- centralityTable(Graph_robustness_b)
+
+#isolate what is statistically different
+robustness_a_b$diffcen.pval #only: media, age, reg
+robustness_a_b$diffcen.real
+
+```
+
+
+## Backbone (Article)
+
+```{r}
+#model selection
+backbone.suggest(FitW3$pairwise$wadj)
+
+# application of the disparity filter
+backbone_matrix <- disparity(
+  inputGraphMGM,
+  alpha = 0.05,
+  signed = FALSE,
+  mtc = "none",
+  class = "original",
+  narrative = TRUE)
+
+#plot
+set.seed(100)
+GraphMGM<-qgraph(backbone_matrix, 
+  layout = "spring", theme = "Borkulo", 
+  labels = shortnames,nodeNames = longnames,
+  details = FALSE, vsize=6.0, shape = shapes,
+  groups=Totalgroup_comm, color= Totalgroup_cols,
+  legend = TRUE, legend.cex = 0.35, borders = FALSE, 
+  filetype="jpg", filename=here("Output", "Article", "backbone.jpg"))
+
+```
+
+
+## Regressions (Supplement S1)
+```{r}
+#Fitting logistic regressions
+model_vac_bad <- glm( hesitancy ~ vac_bad + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_vac_ob <- glm( hesitancy ~ vac_ob + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_worry <- glm( hesitancy ~ worry + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_risk <- glm( hesitancy ~ risk + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_conspiracy <- glm( hesitancy ~ conspiracy + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_nat <- glm( hesitancy ~ nat + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_h_locus <- glm( hesitancy ~ h_locus + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_he_eco <- glm( hesitancy ~ he_eco + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_PTV_L <- glm( hesitancy ~ PTV_L + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_PTV_5SM <- glm( hesitancy ~ PTV_5SM + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_PTV_BOI <- glm( hesitancy ~ PTV_BOI + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_tr_sci <- glm( hesitancy ~ tr_sci + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_pray <- glm( hesitancy ~ pray + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_media <- glm( hesitancy ~ media + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_low_comp <- glm( hesitancy ~ low_comp + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_distrust_gov <- glm( hesitancy ~ distrust_gov + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+model_distrust_inst <- glm( hesitancy ~ distrust_inst + sex + age + educ + reg + eco_insec, 
+                data = W3, family = binomial)
+
+#Additional model for final table
+model_educ <- glm( hesitancy ~ educ + sex + age + reg + eco_insec, 
+                data = W3, family = binomial)
+  #coeff
+  coeff_educ =  exp(extract_numeric(model_educ$coefficients[2]))
+  
+  #significance
+  summary(model_educ)$coeff[-1,4] < 0.05
+```
+
+## Export regression table for additional material (Supplement S1)
+```{r}
+#model_vac_bad
+tab_model(list(model_vac_bad),
+          show.p = TRUE,
+          p.style = "stars",
+          p.threshold = c(0.1, 0.05, 0.01),
+          dv.labels = c("vac_bad"),
+          collapse.ci = TRUE,
+          show.aic = TRUE,
+          title = "Logit regression model on vaccine hesitancy",
+          string.pred = " ",
+          auto.label = FALSE, 
+          file = here("Output", "Supplement", "regressions", "model_vac_bad.doc")
+)
+
+#model_vac_ob
+tab_model(list(model_vac_ob),
+          show.p = TRUE,
+          p.style = "stars",
+          p.threshold = c(0.1, 0.05, 0.01),
+          dv.labels = c("vac_ob"),
+          collapse.ci = TRUE,
+          show.aic = TRUE,
+          title = "Logit regression model on vaccine hesitancy",
+          string.pred = " ",
+          auto.label = FALSE, 
+          file = here("Output", "Supplement", "regressions", "model_vac_ob.doc")
+)
+
+#model_worry
+tab_model(list(model_worry),
+          show.p = TRUE,
+          p.style = "stars",
+          p.threshold = c(0.1, 0.05, 0.01),
+          dv.labels = c("worry"),
+          collapse.ci = TRUE,
+          show.aic = TRUE,
+          title = "Logit regression model on vaccine hesitancy",
+          string.pred = " ",
+          auto.label = FALSE, 
+          file = here("Output", "Supplement", "regressions", "model_worry.doc")
+)
+
+#model_risk
+tab_model(list(model_risk),
+          show.p = TRUE,
+          p.style = "stars",
+          p.threshold = c(0.1, 0.05, 0.01),
+          dv.labels = c("risk"),
+          collapse.ci = TRUE,
+          show.aic = TRUE,
+          title = "Logit regression model on vaccine hesitancy",
+          string.pred = " ",
+          auto.label = FALSE, 
+          file = here("Output", "Supplement", "regressions", "model_risk.doc")
+)
+
+#model_conspiracy
+tab_model(list(model_conspiracy),
+          show.p = TRUE,
+          p.style = "stars",
+          p.threshold = c(0.1, 0.05, 0.01),
+          dv.labels = c("conspiracy"),
+          collapse.ci = TRUE,
+          show.aic = TRUE,
+          title = "Logit regression model on vaccine hesitancy",
+          string.pred = " ",
+          auto.label = FALSE, 
+          file = here("Output", "Supplement", "regressions", "model_conspiracy.doc")
+)
+
+#model_nat
+tab_model(list(model_nat),
+          show.p = TRUE,
+          p.style = "stars",
+          p.threshold = c(0.1, 0.05, 0.01),
+          dv.labels = c("nat"),
+          collapse.ci = TRUE,
+          show.aic = TRUE,
+          title = "Logit regression model on vaccine hesitancy",
+          string.pred = " ",
+          auto.label = FALSE, 
+          file = here("Output", "Supplement", "regressions", "model_nat.doc")
+)
+
+#model_h_locus
+tab_model(list(model_h_locus),
+          show.p = TRUE,
+          p.style = "stars",
+          p.threshold = c(0.1, 0.05, 0.01),
+          dv.labels = c("h_locus"),
+          collapse.ci = TRUE,
+          show.aic = TRUE,
+          title = "Logit regression model on vaccine hesitancy",
+          string.pred = " ",
+          auto.label = FALSE, 
+          file = here("Output", "Supplement", "regressions", "model_h_locus.doc")
+)
+
+
+#model_he_eco
+tab_model(list(model_he_eco),
+          show.p = TRUE,
+          p.style = "stars",
+          p.threshold = c(0.1, 0.05, 0.01),
+          dv.labels = c("he_eco"),
+          collapse.ci = TRUE,
+          show.aic = TRUE,
+          title = "Logit regression model on vaccine hesitancy",
+          string.pred = " ",
+          auto.label = FALSE, 
+          file = here("Output", "Supplement", "regressions", "model_he_eco.doc")
+)
+
+#model_PTV_L
+tab_model(list(model_PTV_L),
+          show.p = TRUE,
+          p.style = "stars",
+          p.threshold = c(0.1, 0.05, 0.01),
+          dv.labels = c("PTV_L"),
+          collapse.ci = TRUE,
+          show.aic = TRUE,
+          title = "Logit regression model on vaccine hesitancy",
+          string.pred = " ",
+          auto.label = FALSE, 
+          file = here("Output", "Supplement", "regressions", "model_PTV_L.doc")
+)
+
+#model_PTV_5SM
+tab_model(list(model_PTV_5SM),
+          show.p = TRUE,
+          p.style = "stars",
+          p.threshold = c(0.1, 0.05, 0.01),
+          dv.labels = c("PTV_5SM"),
+          collapse.ci = TRUE,
+          show.aic = TRUE,
+          title = "Logit regression model on vaccine hesitancy",
+          string.pred = " ",
+          auto.label = FALSE, 
+          file = here("Output", "Supplement", "regressions", "model_PTV_5SM.doc")
+)
+
+#model_PTV_BOI
+tab_model(list(model_PTV_BOI),
+          show.p = TRUE,
+          p.style = "stars",
+          p.threshold = c(0.1, 0.05, 0.01),
+          dv.labels = c("PTV_BOI"),
+          collapse.ci = TRUE,
+          show.aic = TRUE,
+          title = "Logit regression model on vaccine hesitancy",
+          string.pred = " ",
+          auto.label = FALSE, 
+          file = here("Output", "Supplement", "regressions", "model_PTV_BOI.doc")
+)
+
+#model_tr_sci
+tab_model(list(model_tr_sci),
+          show.p = TRUE,
+          p.style = "stars",
+          p.threshold = c(0.1, 0.05, 0.01),
+          dv.labels = c("tr_sci"),
+          collapse.ci = TRUE,
+          show.aic = TRUE,
+          title = "Logit regression model on vaccine hesitancy",
+          string.pred = " ",
+          auto.label = FALSE, 
+          file = here("Output", "Supplement", "regressions", "model_tr_sci.doc")
+)
+
+#model_pray
+tab_model(list(model_pray),
+          show.p = TRUE,
+          p.style = "stars",
+          p.threshold = c(0.1, 0.05, 0.01),
+          dv.labels = c("pray"),
+          collapse.ci = TRUE,
+          show.aic = TRUE,
+          title = "Logit regression model on vaccine hesitancy",
+          string.pred = " ",
+          auto.label = FALSE, 
+          file = here("Output", "Supplement", "regressions", "model_pray.doc")
+)
+
+#model_media
+tab_model(list(model_media),
+          show.p = TRUE,
+          p.style = "stars",
+          p.threshold = c(0.1, 0.05, 0.01),
+          dv.labels = c("media"),
+          collapse.ci = TRUE,
+          show.aic = TRUE,
+          title = "Logit regression model on vaccine hesitancy",
+          string.pred = " ",
+          auto.label = FALSE, 
+          file = here("Output", "Supplement", "regressions", "model_media.doc")
+)
+
+#model_low_comp
+tab_model(list(model_low_comp),
+          show.p = TRUE,
+          p.style = "stars",
+          p.threshold = c(0.1, 0.05, 0.01),
+          dv.labels = c("low_comp"),
+          collapse.ci = TRUE,
+          show.aic = TRUE,
+          title = "Logit regression model on vaccine hesitancy",
+          string.pred = " ",
+          auto.label = FALSE, 
+          file = here("Output", "Supplement", "regressions", "model_low_comp.doc")
+)
+
+#model_distrust_gov
+tab_model(list(model_distrust_gov),
+          show.p = TRUE,
+          p.style = "stars",
+          p.threshold = c(0.1, 0.05, 0.01),
+          dv.labels = c("distrust_gov"),
+          collapse.ci = TRUE,
+          show.aic = TRUE,
+          title = "Logit regression model on vaccine hesitancy",
+          string.pred = " ",
+          auto.label = FALSE, 
+          file = here("Output", "Supplement", "regressions", "model_distrust_gov.doc")
+)
+
+#model_distrust_inst
+tab_model(list(model_distrust_inst),
+          show.p = TRUE,
+          p.style = "stars",
+          p.threshold = c(0.1, 0.05, 0.01),
+          dv.labels = c("distrust_inst"),
+          collapse.ci = TRUE,
+          show.aic = TRUE,
+          title = "Logit regression model on vaccine hesitancy",
+          string.pred = " ",
+          auto.label = FALSE, 
+          file = here("Output", "Supplement", "regressions", "model_distrust_inst.doc")
+)
+
+#model_vac_bad
+tab_model(list(model_vac_bad),
+          show.p = TRUE,
+          p.style = "stars",
+          p.threshold = c(0.1, 0.05, 0.01),
+          dv.labels = c("vac_bad"),
+          collapse.ci = TRUE,
+          show.aic = TRUE,
+          title = "Logit regression model on vaccine hesitancy",
+          string.pred = " ",
+          auto.label = FALSE, 
+          file = here("Output", "Supplement", "regressions", "model_vac_bad.doc")
+)
+
+#Additional model for final table
+tab_model(list(model_educ),
+          show.p = TRUE,
+          p.style = "stars",
+          p.threshold = c(0.1, 0.05, 0.01),
+          dv.labels = c("educ"),
+          collapse.ci = TRUE,
+          show.aic = TRUE,
+          title = "Logit regression model on vaccine hesitancy",
+          string.pred = " ",
+          auto.label = FALSE, 
+          file = here("Output", "Supplement", "regressions", "model_educ.doc")
+)
+```
+
+
+## Scatterplot data
+```{r}
+#Gathering coefficients
+coeff = extract_numeric(model_vac_bad$coefficients[2])
+coeff[2] = extract_numeric(model_vac_ob$coefficients[2])
+coeff[3] = extract_numeric(model_worry$coefficients[2])
+coeff[4] = extract_numeric(model_risk$coefficients[2])
+coeff[5] = extract_numeric(model_conspiracy$coefficients[2])
+coeff[6] = extract_numeric(model_nat$coefficients[2])
+coeff[7] = extract_numeric(model_h_locus$coefficients[2])
+coeff[8] = extract_numeric(model_he_eco$coefficients[2])
+coeff[9] = extract_numeric(model_PTV_L$coefficients[2])
+coeff[10] = extract_numeric(model_PTV_5SM$coefficients[2])
+coeff[11] = extract_numeric(model_PTV_BOI$coefficients[2])
+coeff[12] = extract_numeric(model_tr_sci$coefficients[2])
+coeff[13] = extract_numeric(model_pray$coefficients[2])
+coeff[14] = extract_numeric(model_media$coefficients[2])
+coeff[15] = extract_numeric(model_low_comp$coefficients[2])
+coeff[16] = extract_numeric(model_distrust_gov$coefficients[2])
+coeff[17] = extract_numeric(model_distrust_inst$coefficients[2])
+
+  #Transform in odds ratio
+  coeff_exp = unlist(lapply(coeff, exp))
+```
+
+
+```{r}
+#Significance
+summary(model_vac_bad)$coeff[-1,4] < 0.05
+summary(model_vac_ob)$coeff[-1,4] < 0.05
+summary(model_worry)$coeff[-1,4] < 0.05 #not significant
+summary(model_risk)$coeff[-1,4] < 0.05
+summary(model_conspiracy)$coeff[-1,4] < 0.05
+summary(model_nat)$coeff[-1,4] < 0.05
+summary(model_h_locus)$coeff[-1,4] < 0.05
+summary(model_he_eco)$coeff[-1,4] < 0.05
+summary(model_PTV_L)$coeff[-1,4] < 0.05
+summary(model_PTV_5SM)$coeff[-1,4] < 0.05 #not significant
+summary(model_PTV_BOI)$coeff[-1,4] < 0.05
+summary(model_tr_sci)$coeff[-1,4] < 0.05
+summary(model_pray)$coeff[-1,4] < 0.05 #not significant
+summary(model_media)$coeff[-1,4] < 0.05 #not significant
+summary(model_low_comp)$coeff[-1,4] < 0.05
+summary(model_distrust_gov)$coeff[-1,4] < 0.05
+summary(model_distrust_inst)$coeff[-1,4] < 0.05
+
+  #vector for significance
+  Significance = rep(c("Significant"),17)
+  Significance[3] = "Not significant"
+  Significance[10] = "Not significant"
+  Significance[13] = "Not significant"
+  Significance[14] = "Not significant"
+```
+
+
+```{r}
+#Gatering strength scores
+strength = centMGM %>%
+  filter(measure=="Strength") %>% 
+  dplyr::select(value) %>%
+  filter(!row_number() %in% c(15:20))
+
+cent_all = centMGM %>%
+  filter(measure=="Strength") %>% 
+  dplyr::select(value, node) %>% 
+  mutate_if(is.numeric, ~round(., 2))
+```
+
+
+```{r}
+#Gatering degree
+degree_cent_graph = degree_cent[-c(15:20)]
+```
+
+
+```{r}
+#Gathering names
+names = shortnames
+names = names[-c(15:20)]
+```
+
+
+```{r}
+#Merging into a df1 (Reported in Supplement S1)
+scatterplot = data.frame(names, coeff_exp, strength, Significance) %>% 
+  rename(strength = value)
+scatterplot$names = as.factor(scatterplot$names)
+scatterplot$coeff_exp = as.numeric(scatterplot$coeff_exp)
+scatterplot$strength = as.numeric(scatterplot$strength)
+scatterplot$Significance = as.factor(scatterplot$Significance)
+
+#Merging into a df2
+scatterplot_degree = data.frame(names, coeff_exp, degree_cent_graph, Significance)
+scatterplot_degree$degree_cent_graph = as.numeric(scatterplot_degree$degree_cent_graph)
+
+print(scatterplot_degree)
+```
+
+## Scatterplots 
+```{r}
+#Strength (Article)
+graph_strength = ggplot(scatterplot, aes(x=strength, y=coeff_exp, label = names)) + 
+  geom_point((aes(color=Significance))) + theme_nice() + 
+  geom_smooth(method=lm, se = FALSE, linetype = "dotted", color = "#DCDCDC") +
+  geom_text_repel(size = 3) +
+  xlab("Strength centrality") + ylab("Regression coefficient") + 
+  scale_fill_discrete(labels=c('label1', 'label2'))
+
+ggsave(here("Output", "Article", "graph_strength.jpg"), graph_strength, height = 5, width = 8)
+```
+
+```{r}
+#Degree (Supplement S1)
+graph_degree = ggplot(scatterplot_degree, aes(x=degree_cent_graph, y=coeff_exp, label = names)) + 
+  geom_point((aes(color=Significance))) + theme_nice() + 
+  geom_smooth(method=lm, se = FALSE, linetype = "dotted", color = "#DCDCDC") +
+  geom_text_repel(size = 3) +
+  xlab("Degree centrality") + ylab("Regression coefficient") + 
+  scale_fill_discrete(labels=c('label1', 'label2'))
+
+ggsave(here("Output", "Supplement", "graph_degree.jpg"), graph_degree, height = 5, width = 8)
+```
+
+## Final table empirical predictors (Article)
+```{r}
+#Df with variables that (1) are tied to hesitancy, (2) are in the backbone
+final_tab = scatterplot %>% 
+  mutate(degree = scatterplot_degree$degree_cent_graph) %>% 
+  add_row(names = "educ", coeff_exp = 1.764246, strength = 1.061313041, 
+          Significance = "Significant", degree = 10) %>% 
+  filter(names %in% c("vac_free","vac_bad","low_comp","conspiracy","nat","educ")) %>% 
+  mutate(edge_weight=c(0.95, 0.34, 0.34, 0.12, 0.07, 0.07)) %>% 
+  relocate(Significance, .after = edge_weight) 
+
+    #conversion of type
+    final_tab$names = as.factor(final_tab$names)
+    final_tab$coeff_exp = as.numeric(final_tab$coeff_exp)
+    final_tab$strength = as.numeric(final_tab$strength)
+    final_tab$degree = as.numeric(final_tab$degree)
+    final_tab$edge_weight = as.numeric(final_tab$edge_weight)
+    final_tab$Significance = as.factor(final_tab$Significance)
+
+#Z scores
+final_tab_z = final_tab %>% 
+  mutate(coeff_exp = (coeff_exp - mean(coeff_exp))/sd(coeff_exp), 
+         strength = (strength - mean(strength))/sd(strength),
+         degree = (degree - mean(degree))/sd(degree),
+         edge_weight = (edge_weight - mean(edge_weight))/sd(edge_weight)) %>% 
+          mutate_if(is.numeric, ~round(., 2))
+```
+
+
+# Output
+
+## Export heavy objects
+
+```{r}
+#communities
+saveRDS(CommunityStabTotal, here("Input", "CommunityStabTotal.rds"))
+#bootnet
+saveRDS(edgeacc, here("Input","edgeacc.rds"))
+saveRDS(centstab, here("Input", "centstab.rds"))
+#final tab
+saveRDS(final_tab, here("Input", "final_tab.rds"))
+saveRDS(final_tab_z, here("Input", "final_tab_z.rds"))
+```
+
+## Edge weight to excel (Supplement S1)
+
+```{r}
+##only upper triangle without edge weigths 0 for readability
+EdgeWeight_Total_half<-upper.triangle(inputGraphMGM)
+EdgeWeight_Total_half[EdgeWeight_Total_half == 0] <- NA
+EdgeWeightsExcel_half<- list("mgm" = EdgeWeight_Total_half)
+write.xlsx(EdgeWeightsExcel_half, "../Output/Supplement/EdgeWeightsExcel_half.xlsx",
+           colWidths = "auto", rowNames = TRUE)
+```
+
