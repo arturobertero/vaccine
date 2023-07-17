@@ -33,11 +33,11 @@ W3 = readRDS((here("Input", "W3.rds")))
 
 ```{r}
 ## network objects
-type <-c("g","g","c","g","c","g","g","g","g","g","g","g","g","c","c","g","c",
-          "g","g","c","g","g","g")
+type <-c("g","g","c","g","c","g","g","g","g","g","g","g","c","c","c","g","c",
+         "c","g","c","g","g","g")
 
-level <-c("1","1","2","1","2","1","1","1","1","1","1","1","1","2","2","1","2",
-          "1","1","2","1","1","1")
+level <-c("1","1","2","1","2","1","1","1","1","1","1","1","2","2","2","1","2"
+          ,"2","1","2","1","1","1")
 
 shortnames <- c(
 "vac_bad",
@@ -246,7 +246,8 @@ error_list[[9]] = p_obj$errors[9,2]
 error_list[[10]] = p_obj$errors[10,2]
 error_list[[11]] = p_obj$errors[11,2]
 error_list[[12]] = p_obj$errors[12,2]
-error_list[[13]] = p_obj$errors[13,2]
+  beyondmarg <- p_obj$errors[13,3]-p_obj$errors[13,5]
+  error_list[[13]] = c(p_obj$errors[13,5],beyondmarg)
   beyondmarg <- p_obj$errors[14,3]-p_obj$errors[14,5]
   error_list[[14]] = c(p_obj$errors[14,5],beyondmarg)
   beyondmarg <- p_obj$errors[15,3]-p_obj$errors[15,5]
@@ -254,7 +255,8 @@ error_list[[13]] = p_obj$errors[13,2]
 error_list[[16]] = p_obj$errors[16,2]
   beyondmarg <- p_obj$errors[17,3]-p_obj$errors[17,5]
   error_list[[17]] = c(p_obj$errors[17,5],beyondmarg)
-error_list[[18]] = p_obj$errors[18,2]
+  beyondmarg <- p_obj$errors[18,3]-p_obj$errors[18,5]
+  error_list[[18]] = c(p_obj$errors[18,5],beyondmarg)
 error_list[[19]] = p_obj$errors[19,2]
   beyondmarg <- p_obj$errors[20,3]-p_obj$errors[20,5]
   error_list[[20]] = c(p_obj$errors[20,5],beyondmarg)
@@ -276,12 +278,12 @@ color_list[[9]] = "#90B4D4"
 color_list[[10]] = "#90B4D4"
 color_list[[11]] = "#90B4D4"
 color_list[[12]] = "#90B4D4"
-color_list[[13]] = "#90B4D4"
+color_list[[13]] = c("#ffa500", "#ff4300")
 color_list[[14]] = c("#ffa500", "#ff4300")
 color_list[[15]] = c("#ffa500", "#ff4300")
 color_list[[16]] = "#90B4D4"
 color_list[[17]] = c("#ffa500", "#ff4300")
-color_list[[18]] = "#90B4D4"
+color_list[[18]] = c("#ffa500", "#ff4300")
 color_list[[19]] = "#90B4D4"
 color_list[[20]] = c("#ffa500", "#ff4300")
 color_list[[21]] = "#90B4D4"
@@ -295,11 +297,11 @@ set.seed(100)
 GraphMGM<-qgraph(inputGraphMGM, pie = error_list, pieColor = color_list,
   layout = "spring", theme = "Borkulo", 
   labels = shortnames, nodeNames = longnames,
-  cut = 0.10, minimum = 0.07, maximum = 1, 
+  cut = 0.10, minimum = 0.06, maximum = 1, 
   details = FALSE, vsize=6.0, shape = shapes,
   groups=Totalgroup_comm, color= Totalgroup_cols,
   legend = TRUE, legend.cex = 0.35, borders = TRUE, 
-  filetype="jpg", filename=here("Output", "Article", "MGM_min_07_predictability"))
+  filetype="jpg", filename=here("Output", "Article", "MGM_min_06_predictability"))
 ```
 
 ## Centrality estimates
@@ -342,7 +344,7 @@ spl_o = distance_w(FitW3$pairwise$wadj, directed=NULL, subsample=1)
 spl_o <- spl_o[upper.tri(spl_o)]
 aspl_o <- mean(spl_o)
 ```
-ASPL = 1.643193
+ASPL = 1.563595
 
 ## Bootstrap (Supplement S1)
 
@@ -410,12 +412,16 @@ dev.off()
 ```{r}
 # Test: difference of strength of node 5 [conspiracy] vs 20 [hesitancy] (if the bootstrapped CI include 0, they do not differ)
 test_conspiracy_vs_hesitancy = differenceTest(edgeacc, 5, 20, "strength")
+#test_conspiracy_vs_distrust_gov = differenceTest(edgeacc, 5, 22, "strength")
+#test_conspiracy_vs_vac_bad = differenceTest(edgeacc, 5, 1, "strength")
+#test_conspiracy_vs_pray = differenceTest(edgeacc, 5, 13, "strength")
 
 # Plot test results for every edge weight in the network
 pdf('../Output/Supplement/robustness/test_strenghts.pdf', height = 70, width = 50)
 plot(edgeacc, "strength", order = "mean", labels = T)
 dev.off()
 ```
+
 ## Additional robustness check (Supplement S1)
 ```{r}
 #Creating serial number for each row
@@ -440,27 +446,17 @@ FitW3_robustness_b <- mgm(W3_robustness_b, type, level, k = 2, binarySign = TRUE
 
 ```{r}
 #Network Comparison Test between the two mgm 
-#(NO CORRECTION FOR MULTIPLE TESTING)
 set.seed(1)
 robustness_a_b = NCT(W3_robustness_a, W3_robustness_b, it = 1000,
       test.edges=TRUE, edges="all", 
-      progressbar=TRUE, p.adjust.methods= c("none"), 
-      test.centrality=TRUE, 
-      centrality=c("strength"),nodes="all")
-
-#Network Comparison Test with BONFERRONI CORRECTION:
-#NO DIFFERENCES EMERGE
-set.seed(1)
-robustness_a_b_bonferroni = NCT(W3_robustness_a, W3_robustness_b, it = 1000,
-      test.edges=TRUE, edges="all", 
-      progressbar=TRUE, p.adjust.methods= c("bonferroni"), 
+      progressbar=FALSE, p.adjust.methods= c("bonferroni"), 
       test.centrality=TRUE, 
       centrality=c("strength"),nodes="all")
 ```
 
 
 ```{r}
-#Visualize results of edge tests
+#Visualize results of edge tests 
 inputNCTgraph <- FitW3_robustness_a$pairwise$wadj - FitW3_robustness_b$pairwise$wadj
 inputNCTgraph[upper.tri(inputNCTgraph)][which(robustness_a_b$einv.pvals$`p-value` >= .05)] <- 0
 inputNCTgraph <- forceSymmetric(inputNCTgraph)
@@ -480,8 +476,8 @@ Graph_robustness_b <-qgraph(FitW3_robustness_b$pairwise$wadj, labels = shortname
 cent_robustness_b <- centralityTable(Graph_robustness_b)
 
 #isolate what is statistically different
-robustness_a_b$diffcen.pval #only: media, age, reg
-robustness_a_b$diffcen.real
+robustness_a_b$diffcen.pval #no differences are statistically significant
+robustness_a_b$diffcen.real #raw differences in centrality
 
 ```
 
@@ -977,10 +973,10 @@ ggsave(here("Output", "Supplement", "graph_degree.jpg"), graph_degree, height = 
 #Df with variables that (1) are tied to hesitancy, (2) are in the backbone
 final_tab = scatterplot %>% 
   mutate(degree = scatterplot_degree$degree_cent_graph) %>% 
-  add_row(names = "educ", coeff_exp = 1.764246, strength = 1.061313041, 
+  add_row(names = "educ", coeff_exp = 1.764247, strength = 1.0869328, 
           Significance = "Significant", degree = 10) %>% 
   filter(names %in% c("vac_free","vac_bad","low_comp","conspiracy","nat","educ")) %>% 
-  mutate(edge_weight=c(0.95, 0.34, 0.34, 0.12, 0.07, 0.07)) %>% 
+  mutate(edge_weight=c(0.34, 0.95, 0.12, 0.07, 0.34, 0.07)) %>% #adding edge weights
   relocate(Significance, .after = edge_weight) 
 
     #conversion of type
@@ -997,7 +993,22 @@ final_tab_z = final_tab %>%
          strength = (strength - mean(strength))/sd(strength),
          degree = (degree - mean(degree))/sd(degree),
          edge_weight = (edge_weight - mean(edge_weight))/sd(edge_weight)) %>% 
-          mutate_if(is.numeric, ~round(., 2))
+          mutate_if(is.numeric, ~round(., 2)) %>% 
+  arrange(desc(coeff_exp)) %>% 
+  dplyr::select(names, coeff_exp, edge_weight, strength, degree, Significance)
+
+final_tab
+final_tab_z
+```
+
+```{r}
+#Table strength and degree centrality of each node (Supplement)
+table_cent = cent_all
+table_cent[,3]= degree_data[,2]
+table_cent = table_cent %>% dplyr::select(node, value, V3) %>% 
+  rename(Strength = value, Degree = V3)
+
+table_cent
 ```
 
 
