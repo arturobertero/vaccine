@@ -296,17 +296,81 @@ color_list[[23]] = "#90B4D4"
 ```
 
 ```{r}
-# The final plot
+# Main plot as png 
 set.seed(100)
-GraphMGM<-qgraph(inputGraphMGM, pie = error_list, pieColor = color_list,
-  layout = "spring", theme = "Borkulo", 
-  labels = shortnames, nodeNames = longnames,
-  cut = 0.10, minimum = 0.06, maximum = 1, 
-  details = FALSE, vsize=6.0, shape = shapes,
-  groups=Totalgroup_comm, color= Totalgroup_cols,
-  legend = TRUE, legend.cex = 0.35, borders = TRUE, 
-  filetype="jpg", filename=here("Output", "Article", "MGM_min_06_predictability"))
+p_load(devEMF) # to save as vector
+
+png(
+  filename = here("Output", "Article", "MGM_min_06_predictability.png"),
+  width = 21.0, 
+  height = 29.7, 
+  units = "cm",
+  res = 300
+)
+
+set.seed(100)
+GraphMGM_png <- qgraph(
+  inputGraphMGM,
+  pie = error_list,
+  pieColor = color_list,
+  layout = "spring",
+  theme = "Borkulo",
+  labels = shortnames,
+  nodeNames = longnames,
+  cut = 0.10,
+  minimum = 0.06,
+  maximum = 1,
+  details = FALSE,
+  vsize = 6.5,                  
+  label.prop = 0.83,            
+  edge.width = 1.5,             
+  shape = shapes,
+  groups = Totalgroup_comm,
+  color = Totalgroup_cols,
+  legend = TRUE,
+  legend.cex = 0.35,
+  borders = TRUE,
+  layoutOffset = c(-0.15, 0),   
+  GLratio = 2.8                 
+)
+dev.off()
+
+# as EMF
+
+emf(
+  file = here("Output", "Article", "MGM_min_06_predictability.emf"),
+  width = 8.27, 
+  height = 11.69
+)
+
+set.seed(100) 
+GraphMGM_emf <- qgraph(
+  inputGraphMGM,
+  pie = error_list,
+  pieColor = color_list,
+  layout = "spring",
+  theme = "Borkulo",
+  labels = shortnames,
+  nodeNames = longnames,
+  cut = 0.10,
+  minimum = 0.06,
+  maximum = 1,
+  details = FALSE,
+  vsize = 6.5,                  
+  label.prop = 0.83,            
+  edge.width = 1.5,             
+  shape = shapes,
+  groups = Totalgroup_comm,
+  color = Totalgroup_cols,
+  legend = TRUE,
+  legend.cex = 0.35,
+  borders = TRUE,
+  layoutOffset = c(-0.15, 0),   
+  GLratio = 2.8                
+)
+dev.off()
 ```
+
 
 ## Centrality estimates
 
@@ -321,11 +385,36 @@ GraphMGMCENT<-qgraph(inputGraphMGM,
 #centrality Total
 centMGM <- centralityTable(GraphMGMCENT,standardized = FALSE, signed = FALSE)
 
-#CentralityPlot Total
-centrality_table = centralityPlot(GraphMGMCENT, include = c("Strength"), scale = "raw",
-               orderBy = "Strength", signed = FALSE) + theme_nice() + theme(axis.text.y=element_text(hjust=1))
+# ggplot 
+centrality_table <- centralityPlot(
+  GraphMGMCENT, 
+  include = c("Strength"), 
+  scale = "raw",
+  orderBy = "Strength", 
+  signed = FALSE
+) + 
+  theme_nice() + 
+  theme(axis.text.y = element_text(hjust = 1))
 
-ggsave(here("Output", "Article", "Centrality_Table.jpg"), centrality_table)
+# png
+ggsave(
+  filename = here("Output", "Article", "Centrality_Table.png"), 
+  plot = centrality_table,
+  width = 8, 
+  height = 6, 
+  units = "in",
+  dpi = 300
+)
+
+# EMF
+ggsave(
+  filename = here("Output", "Article", "Centrality_Table.emf"), 
+  plot = centrality_table,
+  device = devEMF::emf, 
+  width = 8, 
+  height = 6, 
+  units = "in"
+)
 ```
 
 ### Degree centrality
@@ -357,6 +446,7 @@ ASPL = 1.563595
 #### Edge accuracy
 
 ```{r}
+# WARNING: computationally intensive!!
 #edge weight accuracy: non parametric bootstrap with 8 cores
 #edgeacc =  bootnet(W3, nBoots = 1000, nCores = 8, 'mgm')
 
@@ -373,14 +463,16 @@ pdf('../Output/Supplement/robustness/edge_accuracy_CI.pdf', height = 70, width =
 plot(edgeacc, plot = "interval", split0 = TRUE, order="sample", labels=longnames)
 dev.off()
 
-#summary
-saummary_edgeacc = summary(edgeacc, statistics = c("edge", "strength"), 
-                            perNode = FALSE, rank = FALSE) 
+#summary (uncomment in case you want to see full stats.)
+# WARNING: computationally intensive!!
+#saummary_edgeacc = summary(edgeacc, statistics = c("edge", "strength"), 
+#                            perNode = FALSE, rank = FALSE) 
 ```
 
 #### Centrality stability (Supplement S1)
 
 ```{r}
+# WARNING: computationally intensive!!
 # case dropping bootstrap
 #centstab = bootnet(W3, nBoots = 1000, 'mgm', type = "case", nCores = 8)
 
@@ -405,6 +497,7 @@ corstab = corStability(centstab)
 #### Testing Edge and centrality differences (Supplement S1)
 
 ```{r}
+# WARNING: computationally intensive!!
 # Test: difference of weight ties 2-3 vs 4-5
 differenceTest(edgeacc, 2--3, 3--4, "strength")
 
@@ -416,6 +509,7 @@ dev.off()
 ```
 
 ```{r}
+# WARNING: computationally intensive!!
 # Test: difference of strength of node 5 [conspiracy] vs 20 [hesitancy] (if the bootstrapped CI include 0, they do not differ)
 test_conspiracy_vs_hesitancy = differenceTest(edgeacc, 5, 20, "strength")
 #test_conspiracy_vs_distrust_gov = differenceTest(edgeacc, 5, 22, "strength")
@@ -448,6 +542,7 @@ FitW3_robustness_b <- mgm(W3_robustness_b, type, level, k = 2, binarySign = TRUE
 ```
 
 ```{r}
+# WARNING: computationally intensive!!
 #Network Comparison Test between the two mgm 
 set.seed(1)
 robustness_a_b = NCT(W3_robustness_a, W3_robustness_b, it = 1000,
@@ -555,6 +650,7 @@ model_educ <- glm( hesitancy ~ educ + sex + age + reg + eco_insec,
 ```
 
 ## Export regression table for additional material (Supplement S1)
+
 ```{r}
 #model_vac_bad
 tab_model(list(model_vac_bad),
@@ -925,8 +1021,9 @@ print(scatterplot_degree)
 ```
 
 ## Scatterplots 
+
 ```{r}
-#Strength (Article)
+# ggplot (Strength - article)
 graph_strength = ggplot(scatterplot, aes(x=strength, y=coeff_exp, label = names)) + 
   geom_point((aes(color=Significance))) + theme_nice() + 
   geom_smooth(method=lm, se = FALSE, linetype = "dotted", color = "#DCDCDC") +
@@ -934,7 +1031,25 @@ graph_strength = ggplot(scatterplot, aes(x=strength, y=coeff_exp, label = names)
   xlab("Strength centrality") + ylab("Regression coefficient") + 
   scale_fill_discrete(labels=c('label1', 'label2'))
 
-ggsave(here("Output", "Article", "graph_strength.jpg"), graph_strength, height = 5, width = 8)
+# png
+ggsave(
+  filename = here("Output", "Article", "graph_strength.png"), 
+  plot = graph_strength, 
+  height = 5, 
+  width = 8,
+  units = "in",
+  dpi = 300
+)
+
+# EMF
+ggsave(
+  filename = here("Output", "Article", "graph_strength.emf"), 
+  plot = graph_strength, 
+  device = devEMF::emf, 
+  height = 5, 
+  width = 8,
+  units = "in"
+)
 ```
 
 ```{r}
@@ -952,25 +1067,21 @@ ggsave(here("Output", "Supplement", "graph_degree.jpg"), graph_degree, height = 
 ## Final table (Article)
 
 ```{r}
-# ====================================================================
-# 1. FINAL TABLE (Empirical Predictors directly tied to Hesitancy)
-# ====================================================================
+# Final table
 
-# A. Dynamically extract edge weights connected to hesitancy from the matrix
+# extract edge weights connected to hesitancy from the matrix
 hesitancy_index <- which(shortnames == "hesitancy")
 edges_to_hesitancy <- data.frame(
   names = shortnames,
   edge_weight = inputGraphMGM[, hesitancy_index]
 )
 
-# B. Fix the factor issue so add_row doesn't generate NAs
+# as chat
 scatterplot$names <- as.character(scatterplot$names)
 
-# C. Reconstruct the table programmatically
+# build the table programmatically
 final_tab <- scatterplot %>%
   mutate(degree = scatterplot_degree$degree_cent_graph) %>%
-  # Programmatically add the dropped 'low_educ' node back in 
-  # We use which() to ensure we match the 17th node regardless of long/short naming
   add_row(
     names = "low_educ", 
     coeff_exp = coeff_educ, 
@@ -978,13 +1089,13 @@ final_tab <- scatterplot %>%
     Significance = ifelse(summary(model_educ)$coeff[2,4] < 0.05, "Significant", "Not significant"), 
     degree = degree_cent[which(shortnames == "low_educ")]
   ) %>%
-  # Join the exact mathematical edge weights from the mgm model
+  # Join the edge weights from the mgm model
   left_join(edges_to_hesitancy, by = "names") %>%
   # Keep ONLY the nodes that actually have a non-zero edge with hesitancy
   filter(edge_weight != 0 & names != "hesitancy") %>%
   relocate(Significance, .after = edge_weight) 
 
-# D. Conversion of type
+# manage type
 final_tab$names <- as.factor(final_tab$names)
 final_tab$coeff_exp <- as.numeric(final_tab$coeff_exp)
 final_tab$strength <- as.numeric(final_tab$strength)
@@ -992,7 +1103,7 @@ final_tab$degree <- as.numeric(final_tab$degree)
 final_tab$edge_weight <- as.numeric(final_tab$edge_weight)
 final_tab$Significance <- as.factor(final_tab$Significance)
 
-# E. Z scores
+# Z scores
 final_tab_z <- final_tab %>% 
   mutate(
     coeff_exp = (coeff_exp - mean(coeff_exp)) / sd(coeff_exp), 
@@ -1010,12 +1121,11 @@ print(final_tab_z)
 
 
 ```{r}
-# ====================================================================
-# 2. TABLE CENT (Strength & Degree of all nodes for Supplement)
-# ====================================================================
+
+# TABLE CENT (Strength & Degree of all nodes for Supplement)
 
 table_cent = cent_all
-# Append the raw degree vector directly (safer than subsetting degree_data)
+# Append the raw degree vector directly 
 table_cent$Degree = degree_cent
 table_cent = table_cent %>% 
   rename(Strength = value) %>%

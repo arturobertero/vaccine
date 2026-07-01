@@ -24,6 +24,12 @@ options(scipen=999)
 #Load database
 response_original = read_rds(here("Input", "v1.0_ResPOnsE_COVID_19_W1-W4-2.rds"))  %>% 
   clean_names()
+
+# Comment on the datbase
+# this version of the database is no longer available on the AIRUnimi website.
+# It was replaced by this https://air.unimi.it/handle/2434/935208
+# To ensure full reproducibility, i provide this file in the local GH repo at
+# Input\valid_cases.xlsx"
 ```
 
 # Processing
